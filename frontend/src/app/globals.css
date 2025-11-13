@@ -1,0 +1,110 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #0f1419;
+  --foreground: #ffffff;
+  --card-bg: #1a1f2e;
+  --border: #2d3748;
+  --primary: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--card-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Ensure dropdown options appear below the select element */
+select {
+  position: relative;
+}
+
+select option {
+  position: relative;
+}
+
+/* Override any browser defaults that might cause dropdown to appear above */
+select:focus {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix dropdown width and alignment issues on mobile */
+select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Ensure dropdown options match select width */
+select option {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Force consistent dropdown behavior */
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 640px) {
+  select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  select option {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
