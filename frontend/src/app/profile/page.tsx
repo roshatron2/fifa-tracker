@@ -6,6 +6,7 @@ import { ArrowLeftIcon, TrophyIcon, UserIcon } from '@/components/Icons';
 import ProfileTab from '@/components/ProfileTab';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import SuggestedPlayersTab from '@/components/SuggestedPlayersTab';
+import { useToast } from '@/components/ToastProvider';
 import { useAuth } from '@/contexts/auth';
 import {
   acceptFriendRequest,
@@ -28,6 +29,7 @@ import { useEffect, useState } from 'react';
 export default function ProfilePage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userStats, setUserStats] = useState<UserDetailedStats | null>(null);
   const [suggestedPlayers, setSuggestedPlayers] = useState<NonFriendPlayer[]>(
@@ -141,14 +143,14 @@ export default function ProfilePage() {
           request => request.friend_id !== userId
         ),
       }));
-      alert('Friend request accepted!');
+      showToast('Friend request accepted!', 'success');
     } catch (error) {
       console.error('Error accepting friend request:', error);
       // Show user-friendly error message
       if (error instanceof Error) {
-        alert(error.message);
+        showToast(error.message, 'error');
       } else {
-        alert('Failed to accept friend request. Please try again later.');
+        showToast('Failed to accept friend request. Please try again later.', 'error');
       }
     }
   };
@@ -163,14 +165,14 @@ export default function ProfilePage() {
           request => request.friend_id !== userId
         ),
       }));
-      alert('Friend request rejected!');
+      showToast('Friend request rejected!', 'success');
     } catch (error) {
       console.error('Error rejecting friend request:', error);
       // Show user-friendly error message
       if (error instanceof Error) {
-        alert(error.message);
+        showToast(error.message, 'error');
       } else {
-        alert('Failed to reject friend request. Please try again later.');
+        showToast('Failed to reject friend request. Please try again later.', 'error');
       }
     }
   };
@@ -180,14 +182,14 @@ export default function ProfilePage() {
       await sendFriendRequest(userId);
       // Add to sent requests set
       setSentFriendRequests(prev => new Set(prev).add(userId));
-      alert('Friend request sent!');
+      showToast('Friend request sent!', 'success');
     } catch (error) {
       console.error('Error sending friend request:', error);
       // Show user-friendly error message
       if (error instanceof Error) {
-        alert(error.message);
+        showToast(error.message, 'error');
       } else {
-        alert('Failed to send friend request. Please try again later.');
+        showToast('Failed to send friend request. Please try again later.', 'error');
       }
     }
   };

@@ -24,7 +24,10 @@ export default function FriendsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Your Friends</h3>
-        <button className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm">
+        <button
+          onClick={() => router.push('/?tab=friends')}
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm"
+        >
           Add Friend
         </button>
       </div>
@@ -114,7 +117,10 @@ export default function FriendsTab({
           <p className="text-gray-400 mb-4">
             Add friends to challenge them and track your head-to-head records!
           </p>
-          <button className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+          <button
+            onClick={() => router.push('/?tab=friends')}
+            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
             Add Your First Friend
           </button>
         </div>

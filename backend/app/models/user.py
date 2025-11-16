@@ -31,6 +31,9 @@ class Friend(BaseModel):
     username: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    total_matches: Optional[int] = 0
+    wins: Optional[int] = 0
+    elo_rating: Optional[int] = 1200
 
 
 class UserSearchResult(BaseModel):

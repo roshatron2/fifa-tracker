@@ -153,9 +153,30 @@ npm run dev
 
 ## Docker Setup (Alternative)
 
-If you prefer using Docker instead of local development:
+### Option 1: Development with Hot-Reload (Recommended for Active Development)
 
-### Start All Services
+This setup mounts your code into containers and automatically reloads when you make changes:
+
+```bash
+# Start all services with hot-reload enabled
+docker-compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f
+
+# Stop all services
+docker-compose -f docker-compose.dev.yml down
+```
+
+**Benefits:**
+- Code changes automatically reload (no rebuild needed)
+- FastAPI hot-reload on Python changes
+- Next.js hot-reload on React/TypeScript changes
+- Great for active development
+
+### Option 2: Production Build (For Testing Production Setup)
+
+This setup builds production images:
 
 ```bash
 # Start all services (MongoDB, Backend, Frontend)
@@ -168,9 +189,21 @@ docker-compose -f docker-compose.local.yml logs -f
 docker-compose -f docker-compose.local.yml down
 ```
 
-> **Note**: If you're running the backend locally with `uvicorn`, make sure to stop the Docker backend container first:
+**When to rebuild:**
+```bash
+# After code changes, rebuild specific service
+docker-compose -f docker-compose.local.yml up -d --build backend
+docker-compose -f docker-compose.local.yml up -d --build frontend
+
+# Or rebuild all
+docker-compose -f docker-compose.local.yml up -d --build
+```
+
+> **Note**: If you're running services locally (with `uvicorn` or `npm`), stop the Docker containers first:
 > ```bash
-> docker stop fifa-tracker-backend
+> docker stop fifa-tracker-backend fifa-tracker-frontend
+> # or
+> docker-compose -f docker-compose.dev.yml down
 > ```
 
 ## Project Structure
