@@ -118,6 +118,10 @@ class TournamentUpdate(BaseModel):
 async def create_tournament(tournament: TournamentCreate, current_user: UserInDB = Depends(get_current_active_user)):
     """Create a new tournament with automatic round-robin match generation"""
     db = await get_database()
+
+    if len(tournament.player_ids) < 2:
+        raise HTTPException(status_code=400, detail="A tournament must have at least 2 players to be created")
+
     
     # Validate that all player IDs exist
     if tournament.player_ids:

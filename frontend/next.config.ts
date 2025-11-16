@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Enable standalone output for Docker
+  output: 'standalone',
 };
 
 export default nextConfig;

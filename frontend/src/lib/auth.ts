@@ -8,12 +8,18 @@ export async function register(
   email: string,
   password: string,
   username: string
-): Promise<User | null> {
+): Promise<{ access_token: string; username: string } | null> {
   try {
     const payload = { first_name, last_name, email, password, username };
 
     const response = await axios.post(`${API_BASE_URL}/auth/register`, payload);
     const { data } = response.data;
+    
+    // Store the access token if it's included in the response
+    if (data?.access_token) {
+      localStorage.setItem('fifa-tracker-token', data.access_token);
+    }
+    
     return data;
   } catch (error) {
     debugError('Error registering:', error);

@@ -94,28 +94,58 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 The API will be available at `http://localhost:8000`
 
-## API Documentation
+## Documentation
 
-- **Interactive Docs**: `http://localhost:8000/docs`
+- **Interactive API Docs**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
-- **Authentication Guide**: See [AUTHENTICATION.md](AUTHENTICATION.md)
+- **Authentication**: See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed JWT authentication guide
+- **Configuration**: See [CONFIGURATION.md](CONFIGURATION.md) for environment variables and logging setup
+- **Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment guide
 
 ## Docker Deployment
 
-### On RPI (Raspberry Pi)
+### Local Development with Docker
+
+For local development, use the local Docker Compose configuration:
+
+```bash
+docker-compose -f docker-compose.local.yml up --build
+```
+
+This will start:
+- **MongoDB**: Local MongoDB container (version 7.0) on port 27017
+- **Backend API**: FastAPI application on http://localhost:3000
+
+The MongoDB connection string is automatically set to `mongodb://mongodb:27017/fifa_rivalry` for local development.
+
+**Stopping the services:**
+```bash
+docker-compose -f docker-compose.local.yml down
+```
+
+To also remove the MongoDB data volume:
+```bash
+docker-compose -f docker-compose.local.yml down -v
+```
+
+### Production Deployment
+
+#### On RPI (Raspberry Pi)
 ```bash
 sudo docker compose -f ./docker-compose-rpi.yaml up -d
 ```
 
-### On x86 or Apple Silicon
+#### On x86 or Apple Silicon
 ```bash
 sudo docker compose -f ./docker-compose-standard.yaml up -d
 ```
 
-### Production
+#### Production
 ```bash
 sudo docker compose -f ./docker-compose.yml up -d
 ```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## API Endpoints
 

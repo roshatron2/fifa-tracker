@@ -145,56 +145,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     username: string
   ): Promise<boolean> => {
     try {
-      // Call the real registration API
-      const user = await register(
+      // Call the real registration API (now returns token)
+      const tokenResponse = await register(
         first_name,
         last_name,
         email,
         password,
         username
       );
-      if (!user) {
+      if (!tokenResponse || !tokenResponse.access_token) {
         return false;
       }
 
-      // Get the access token from the response or localStorage
-      const token =
-        user.access_token || localStorage.getItem('fifa-tracker-token');
+      // Token is already stored in localStorage by the register function
+      const token = tokenResponse.access_token;
+      setAccessToken(token);
 
-      // Store refresh token if provided
-      const userWithRefreshToken = user as User & { refresh_token?: string };
-      if (userWithRefreshToken.refresh_token) {
-        localStorage.setItem(
-          'fifa-tracker-refresh-token',
-          userWithRefreshToken.refresh_token
-        );
-      }
-
-      // Fetch complete user profile from backend
+      // Fetch complete user profile from backend using the token
       const currentUser = await getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
         localStorage.setItem('fifa-tracker-user', JSON.stringify(currentUser));
+        return true;
       } else {
-        // Fallback to registration response data if getCurrentUser fails
-        const userData: User = {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          first_name: user.first_name,
-          last_name: user.last_name,
-        };
-        setUser(userData);
-        localStorage.setItem('fifa-tracker-user', JSON.stringify(userData));
+        // If getCurrentUser fails, clear the token and return false
+        localStorage.removeItem('fifa-tracker-token');
+        setAccessToken(null);
+        return false;
       }
-
-      setAccessToken(token);
-      if (token) {
-        localStorage.setItem('fifa-tracker-token', token);
-      }
-      return true;
     } catch (error) {
       console.error('Sign up error:', error);
+      // Clear any stored tokens on error
+      localStorage.removeItem('fifa-tracker-token');
+      localStorage.removeItem('fifa-tracker-refresh-token');
+      setAccessToken(null);
       return false;
     }
   };

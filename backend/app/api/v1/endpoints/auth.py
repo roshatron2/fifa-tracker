@@ -49,9 +49,9 @@ async def check_username_exists(username_data: UsernameCheck):
     )
 
 
-@router.post("/register", response_model=StandardResponse[User])
+@router.post("/register", response_model=StandardResponse[Token])
 async def register_user(user: UserCreate):
-    """Register a new user"""
+    """Register a new user and return access token"""
     db = await get_database()
     
     # Check if username already exists
@@ -109,8 +109,20 @@ async def register_user(user: UserCreate):
     # Get created user
     created_user = await db.users.find_one({"_id": result.inserted_id})
     
+    # Create access token (same as login)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": created_user["username"], "user_id": str(created_user["_id"])},
+        expires_delta=access_token_expires
+    )
+    
     return success_response(
-        data=User(**user_helper(created_user)),
+        data={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
+            "username": created_user["username"]
+        },
         message="User registered successfully"
     )
 
