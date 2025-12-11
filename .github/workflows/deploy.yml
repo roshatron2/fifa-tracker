@@ -19,7 +19,6 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
           LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
-          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
@@ -29,7 +28,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: MONGO_URI,SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,LOG_LEVEL,CORS_ORIGINS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,FRONTEND_URL
+          envs: MONGO_URI,SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,LOG_LEVEL,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,FRONTEND_URL
           script: |
             # Set working directory
             cd ~
@@ -54,7 +53,6 @@ jobs:
             SECRET_KEY=${SECRET_KEY}
             ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
             LOG_LEVEL=${LOG_LEVEL}
-            CORS_ORIGINS=${CORS_ORIGINS}
             GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
             GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
             GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
