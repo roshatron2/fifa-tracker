@@ -20,7 +20,7 @@
     "axios": "^1.10.0",
     "babel-plugin-react-compiler": "^19.1.0-rc.2",
     "lucide-react": "^0.546.0",
-    "next": "15.4.1",
+    "next": "15.4.8",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
