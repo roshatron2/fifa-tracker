@@ -41,41 +41,6 @@ services:
           cpus: '1'
           memory: 1G
 
-  # Frontend service
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: fifa-tracker-frontend-prod
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_ENVIRONMENT=production
-      - NEXT_PUBLIC_API_BASE_URL_LOCAL=${NEXT_PUBLIC_API_BASE_URL_LOCAL:-http://localhost:8000}
-      - NEXT_PUBLIC_API_BASE_URL_NGROK=${NEXT_PUBLIC_API_BASE_URL_NGROK}
-    networks:
-      - app-network
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Production optimizations
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
 networks:
   app-network:
     driver: bridge
