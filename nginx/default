@@ -1,0 +1,105 @@
+# FIFA Rivalry Tracker Backend - Nginx Configuration
+# This configuration proxies all requests to the FastAPI backend on port 8000
+
+# HTTP server
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    # Client max body size for file uploads
+    client_max_body_size 10M;
+
+    # API routes - proxy to FastAPI backend
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+
+        # CORS headers - Let FastAPI handle CORS
+        proxy_hide_header Access-Control-Allow-Origin;
+        proxy_hide_header Access-Control-Allow-Credentials;
+        proxy_hide_header Access-Control-Allow-Methods;
+        proxy_hide_header Access-Control-Allow-Headers;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 8k;
+        proxy_buffers 8 8k;
+    }
+
+    # Health check endpoint
+    location /health {
+        proxy_pass http://127.0.0.1:8000/health;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+}
+
+# HTTPS server (for SSL/TLS with ngrok or Let's Encrypt)
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+
+    # SSL configuration (self-signed certs, replace with real certs in production)
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+
+    # SSL security settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Client max body size for file uploads
+    client_max_body_size 10M;
+
+    # Real IP configuration (for ngrok)
+    set_real_ip_from 0.0.0.0/0;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
+    # API routes - proxy to FastAPI backend
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+
+        # ngrok specific headers
+        proxy_set_header ngrok-skip-browser-warning true;
+
+        # CORS headers - Let FastAPI handle CORS
+        proxy_hide_header Access-Control-Allow-Origin;
+        proxy_hide_header Access-Control-Allow-Credentials;
+        proxy_hide_header Access-Control-Allow-Methods;
+        proxy_hide_header Access-Control-Allow-Headers;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 8k;
+        proxy_buffers 8 8k;
+    }
+
+    # Health check endpoint
+    location /health {
+        proxy_pass http://127.0.0.1:8000/health;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+}

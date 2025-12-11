@@ -78,3 +78,35 @@ jobs:
             # Show logs
             echo "Recent logs:"
             docker compose -f docker-compose.production.yml logs --tail=50
+
+            # Configure nginx
+            echo "Setting up nginx configuration..."
+
+            # Install nginx if not already installed
+            if ! command -v nginx &> /dev/null; then
+              echo "Installing nginx..."
+              sudo apt-get update
+              sudo apt-get install -y nginx
+            fi
+
+            # Copy nginx configuration
+            echo "Copying nginx configuration..."
+            sudo cp nginx/default /etc/nginx/sites-available/default
+
+            # Test nginx configuration
+            echo "Testing nginx configuration..."
+            sudo nginx -t
+
+            # Reload nginx to apply new configuration
+            echo "Reloading nginx..."
+            sudo systemctl reload nginx
+
+            # Ensure nginx is enabled and running
+            sudo systemctl enable nginx
+            sudo systemctl start nginx || true
+
+            # Show nginx status
+            echo "Nginx status:"
+            sudo systemctl status nginx --no-pager -l | head -20
+
+            echo "✅ Deployment complete!"
