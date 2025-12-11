@@ -1,207 +1,99 @@
-name: Deploy to Production
+name: Deploy to Ubuntu VM
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   deploy:
+    name: Deploy to Production VM
     runs-on: ubuntu-latest
 
     steps:
-    - name: Verify secrets are configured
-      run: |
-        echo "Checking if secrets are configured..."
-        [ -n "${{ secrets.SSH_HOST }}" ] && echo "✅ SSH_HOST is set" || echo "❌ SSH_HOST is missing"
-        [ -n "${{ secrets.SSH_USERNAME }}" ] && echo "✅ SSH_USERNAME is set" || echo "❌ SSH_USERNAME is missing"
-        [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ] && echo "✅ SSH_PRIVATE_KEY is set" || echo "❌ SSH_PRIVATE_KEY is missing"
-        [ -n "${{ secrets.SSH_PORT }}" ] && echo "✅ SSH_PORT is set" || echo "❌ SSH_PORT is missing"
-        [ -n "${{ secrets.MONGO_URI }}" ] && echo "✅ MONGO_URI is set" || echo "❌ MONGO_URI is missing"
-        [ -n "${{ secrets.SECRET_KEY }}" ] && echo "✅ SECRET_KEY is set" || echo "❌ SECRET_KEY is missing"
-        [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ] && echo "✅ GOOGLE_CLIENT_ID is set" || echo "❌ GOOGLE_CLIENT_ID is missing"
-        [ -n "${{ secrets.GOOGLE_CLIENT_SECRET }}" ] && echo "✅ GOOGLE_CLIENT_SECRET is set" || echo "❌ GOOGLE_CLIENT_SECRET is missing"
-        [ -n "${{ secrets.GOOGLE_REDIRECT_URI }}" ] && echo "✅ GOOGLE_REDIRECT_URI is set" || echo "❌ GOOGLE_REDIRECT_URI is missing"
-        [ -n "${{ secrets.FRONTEND_URL }}" ] && echo "✅ FRONTEND_URL is set" || echo "❌ FRONTEND_URL is missing"
+      - name: Deploy to Ubuntu VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+          LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          NEXT_PUBLIC_API_BASE_URL_LOCAL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL_LOCAL }}
+          NEXT_PUBLIC_API_BASE_URL_NGROK: ${{ secrets.NEXT_PUBLIC_API_BASE_URL_NGROK }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: MONGO_URI,SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,LOG_LEVEL,CORS_ORIGINS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,FRONTEND_URL,NEXT_PUBLIC_API_BASE_URL_LOCAL,NEXT_PUBLIC_API_BASE_URL_NGROK
+          script: |
+            # Set working directory
+            cd ~
 
-    - name: Setup SSH Agent
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Add server to known_hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-    - name: Deploy to server
-      run: |
-        ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
-          # Navigate to the project directory (create if it doesn't exist)
-          cd ~/fifa-tracker || mkdir -p ~/fifa-tracker && cd ~/fifa-tracker
-
-          # Clone or pull the latest code
-          if [ -d ".git" ]; then
-            echo "Repository exists, pulling latest changes..."
-            git fetch origin
-            git reset --hard origin/main
-          else
-            echo "Cloning repository..."
-            git clone https://github.com/${{ github.repository }}.git .
-          fi
-
-          # Create .env file for backend
-          echo "Creating backend .env file with secrets..."
-          cat > backend/.env << EOF
-          ENVIRONMENT=production
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-          ACCESS_TOKEN_EXPIRE_MINUTES=43200
-          LOG_LEVEL=INFO
-          EOF
-
-          # Create root .env file for docker-compose (if needed)
-          echo "Creating root .env file..."
-          cat > .env << EOF
-          ENVIRONMENT=production
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-          ACCESS_TOKEN_EXPIRE_MINUTES=43200
-          LOG_LEVEL=INFO
-          EOF
-
-          # Verify .env files were created
-          echo "Verifying .env files..."
-          if [ -f "backend/.env" ]; then
-            echo "✅ backend/.env file created successfully"
-            echo "File contents (without values):"
-            cat backend/.env | sed 's/=.*/=***/' || echo "Could not display file contents"
-          else
-            echo "❌ backend/.env file was not created"
-            exit 1
-          fi
-
-          if [ -f ".env" ]; then
-            echo "✅ root .env file created successfully"
-          else
-            echo "⚠️  Warning: root .env file was not created"
-          fi
-
-          # Test environment variable loading (if script exists)
-          echo "Testing environment variable loading..."
-          if [ -f "backend/scripts/test_env.py" ]; then
-            cd backend
-            python3 scripts/test_env.py || echo "Warning: Could not run environment test"
-            cd ..
-          else
-            echo "⚠️  test_env.py script not found, skipping..."
-          fi
-
-          # Stop and remove ALL existing containers, networks, and volumes
-          echo "Stopping and removing ALL existing containers..."
-          docker compose -f docker-compose.production.yml down --remove-orphans --volumes --rmi all || true
-
-          # Force stop and remove any containers that might still be running
-          echo "Force stopping any remaining containers..."
-          docker stop $(docker ps -aq) 2>/dev/null || true
-          docker rm $(docker ps -aq) 2>/dev/null || true
-
-          # Remove all unused containers, networks, images, and volumes
-          echo "Cleaning up all unused Docker resources..."
-          docker system prune -a --volumes -f || true
-
-          # Remove any dangling images specifically
-          echo "Removing dangling images..."
-          docker image prune -a -f || true
-
-          # Build and start the application with force rebuild and no cache
-          echo "Building and starting application with fresh build..."
-          docker compose -f docker-compose.production.yml up -d --build --force-recreate --no-deps
-
-          # Wait a moment for the application to start
-          sleep 20
-
-          # Check if the application is running
-          echo "Checking application status..."
-          if curl -f http://localhost:3000/ > /dev/null 2>&1; then
-            echo "✅ Application deployed successfully!"
-            echo "Container status:"
-            docker compose -f docker-compose.production.yml ps
-          else
-            echo "❌ Application deployment failed!"
-            echo "Container logs:"
-            docker compose -f docker-compose.production.yml logs
-            echo "Container status:"
-            docker compose -f docker-compose.production.yml ps
-            echo "All running containers:"
-            docker ps -a
-            exit 1
-          fi
-
-          # Final cleanup of old images to save space
-          echo "Final cleanup of old Docker images..."
-          docker image prune -f
-
-          # Setup nginx configuration
-          echo "Setting up nginx configuration..."
-          if [ -f "scripts/setup_nginx.sh" ]; then
-            echo "✅ Nginx setup script found, executing..."
-            chmod +x scripts/setup_nginx.sh
-            sudo ./scripts/setup_nginx.sh
-            echo "✅ Nginx configuration completed"
-          elif [ -f "backend/scripts/setup_nginx.sh" ]; then
-            echo "✅ Nginx setup script found in backend, executing..."
-            chmod +x backend/scripts/setup_nginx.sh
-            sudo ./backend/scripts/setup_nginx.sh
-            echo "✅ Nginx configuration completed"
-          else
-            echo "⚠️  Nginx setup script not found, skipping..."
-            echo "Available files in scripts directory:"
-            ls -la scripts/ 2>/dev/null || echo "Root scripts directory not found"
-            ls -la backend/scripts/ 2>/dev/null || echo "Backend scripts directory not found"
-          fi
-
-          # Verify nginx is running and configured (if nginx was setup)
-          if command -v nginx &> /dev/null; then
-            echo "Verifying nginx status..."
-            if sudo systemctl is-active --quiet nginx; then
-              echo "✅ Nginx is running"
-              echo "Nginx status:"
-              sudo systemctl status nginx --no-pager -l
+            # Clone or update repository
+            if [ -d "fifa-tracker" ]; then
+              echo "Repository exists, pulling latest changes..."
+              cd fifa-tracker
+              git fetch origin
+              git reset --hard origin/main
+              git pull origin main
             else
-              echo "⚠️  Nginx is not running"
-              echo "Attempting to start nginx..."
-              sudo systemctl start nginx || echo "Could not start nginx"
-              sudo systemctl status nginx --no-pager -l || true
+              echo "Cloning repository..."
+              git clone https://github.com/${{ github.repository }}.git fifa-tracker
+              cd fifa-tracker
             fi
 
-            # Test nginx proxy to application
-            echo "Testing nginx proxy to application..."
-            sleep 5  # Give nginx a moment to fully start
-            if curl -f http://localhost/ > /dev/null 2>&1; then
-              echo "✅ Nginx proxy is working correctly!"
-            else
-              echo "⚠️  Nginx proxy test failed (this may be expected if nginx is not configured)"
-              echo "Nginx error logs:"
-              sudo tail -n 20 /var/log/nginx/error.log 2>/dev/null || echo "Could not read nginx error logs"
-            fi
-          else
-            echo "⚠️  Nginx not installed, skipping nginx checks"
-          fi
+            # Create backend .env file with secrets
+            mkdir -p backend
+            cat > backend/.env << EOF
+            MONGO_URI=${MONGO_URI}
+            SECRET_KEY=${SECRET_KEY}
+            ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+            LOG_LEVEL=${LOG_LEVEL}
+            CORS_ORIGINS=${CORS_ORIGINS}
+            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+            FRONTEND_URL=${FRONTEND_URL}
+            EOF
 
-          # Display final deployment summary
-          echo "================================"
-          echo "📦 Deployment Summary"
-          echo "================================"
-          docker compose -f docker-compose.production.yml ps
-          echo ""
-          echo "✅ Deployment completed!"
-        ENDSSH
+            # Create root .env file for docker-compose
+            cat > .env << EOF
+            MONGO_URI=${MONGO_URI}
+            SECRET_KEY=${SECRET_KEY}
+            ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+            LOG_LEVEL=${LOG_LEVEL}
+            CORS_ORIGINS=${CORS_ORIGINS}
+            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+            FRONTEND_URL=${FRONTEND_URL}
+            NEXT_PUBLIC_API_BASE_URL_LOCAL=${NEXT_PUBLIC_API_BASE_URL_LOCAL}
+            NEXT_PUBLIC_API_BASE_URL_NGROK=${NEXT_PUBLIC_API_BASE_URL_NGROK}
+            EOF
+
+            # Stop existing containers
+            echo "Stopping existing containers..."
+            docker-compose -f docker-compose.production.yml down || true
+
+            # Remove old images to save space (optional)
+            echo "Cleaning up old images..."
+            docker image prune -f
+
+            # Build and start containers
+            echo "Building and starting production containers..."
+            docker-compose -f docker-compose.production.yml up -d --build
+
+            # Show running containers
+            echo "Deployment complete! Running containers:"
+            docker-compose -f docker-compose.production.yml ps
+
+            # Show logs
+            echo "Recent logs:"
+            docker-compose -f docker-compose.production.yml logs --tail=50
