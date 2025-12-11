@@ -1,0 +1,32 @@
+name: Test SSH Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check Network Connectivity
+      run: |
+        echo "Testing connectivity to server..."
+        echo "GitHub Actions Runner IP:"
+        curl -s https://api.ipify.org
+        echo ""
+        echo "Testing port connectivity to ${{ secrets.SSH_HOST }}:${{ secrets.SSH_PORT }}"
+        timeout 10 bash -c "</dev/tcp/${{ secrets.SSH_HOST }}/${{ secrets.SSH_PORT }}" && echo "✅ Port is reachable" || echo "❌ Port is not reachable (may be blocked by firewall)"
+
+    - name: Test SSH Connection
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          echo "✅ SSH connection successful!"
+          echo "Current directory: $(pwd)"
+          echo "User: $(whoami)"
+          echo "Docker installed: $(command -v docker && echo 'Yes' || echo 'No')"
+          echo "Docker Compose installed: $(command -v docker && docker compose version || echo 'No')"
