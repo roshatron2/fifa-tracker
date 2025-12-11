@@ -61,17 +61,17 @@ jobs:
             FRONTEND_URL=${FRONTEND_URL}
             EOF
 
-            # Stop existing containers
-            echo "Stopping existing containers..."
-            docker compose -f docker-compose.production.yml down || true
+            # Stop existing containers and remove images
+            echo "Stopping existing containers and removing old images..."
+            docker compose -f docker-compose.production.yml down --rmi all --volumes --remove-orphans || true
 
-            # Remove old images to save space (optional)
-            echo "Cleaning up old images..."
-            docker image prune -f
+            # Clean up any remaining unused images
+            echo "Cleaning up unused Docker resources..."
+            docker system prune -af --volumes || true
 
-            # Build and start containers
+            # Build and start containers with fresh build
             echo "Building and starting production containers..."
-            docker compose -f docker-compose.production.yml up -d --build
+            docker compose -f docker-compose.production.yml up -d --build --force-recreate
 
             # Show running containers
             echo "Deployment complete! Running containers:"
