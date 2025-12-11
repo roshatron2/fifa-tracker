@@ -10,6 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Verify secrets are configured
+      run: |
+        echo "Checking if secrets are configured..."
+        [ -n "${{ secrets.SSH_HOST }}" ] && echo "✅ SSH_HOST is set" || echo "❌ SSH_HOST is missing"
+        [ -n "${{ secrets.SSH_USERNAME }}" ] && echo "✅ SSH_USERNAME is set" || echo "❌ SSH_USERNAME is missing"
+        [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ] && echo "✅ SSH_PRIVATE_KEY is set" || echo "❌ SSH_PRIVATE_KEY is missing"
+        [ -n "${{ secrets.SSH_PORT }}" ] && echo "✅ SSH_PORT is set" || echo "❌ SSH_PORT is missing"
+        [ -n "${{ secrets.MONGO_URI }}" ] && echo "✅ MONGO_URI is set" || echo "❌ MONGO_URI is missing"
+        [ -n "${{ secrets.SECRET_KEY }}" ] && echo "✅ SECRET_KEY is set" || echo "❌ SECRET_KEY is missing"
+        [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ] && echo "✅ GOOGLE_CLIENT_ID is set" || echo "❌ GOOGLE_CLIENT_ID is missing"
+        [ -n "${{ secrets.GOOGLE_CLIENT_SECRET }}" ] && echo "✅ GOOGLE_CLIENT_SECRET is set" || echo "❌ GOOGLE_CLIENT_SECRET is missing"
+        [ -n "${{ secrets.GOOGLE_REDIRECT_URI }}" ] && echo "✅ GOOGLE_REDIRECT_URI is set" || echo "❌ GOOGLE_REDIRECT_URI is missing"
+        [ -n "${{ secrets.FRONTEND_URL }}" ] && echo "✅ FRONTEND_URL is set" || echo "❌ FRONTEND_URL is missing"
+
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -88,7 +102,7 @@ jobs:
 
           # Stop and remove ALL existing containers, networks, and volumes
           echo "Stopping and removing ALL existing containers..."
-          docker compose down --remove-orphans --volumes --rmi all || true
+          docker compose -f docker-compose.production.yml down --remove-orphans --volumes --rmi all || true
 
           # Force stop and remove any containers that might still be running
           echo "Force stopping any remaining containers..."
@@ -105,7 +119,7 @@ jobs:
 
           # Build and start the application with force rebuild and no cache
           echo "Building and starting application with fresh build..."
-          docker compose up -d --build --force-recreate --no-deps
+          docker compose -f docker-compose.production.yml up -d --build --force-recreate --no-deps
 
           # Wait a moment for the application to start
           sleep 20
@@ -115,13 +129,13 @@ jobs:
           if curl -f http://localhost:3000/ > /dev/null 2>&1; then
             echo "✅ Application deployed successfully!"
             echo "Container status:"
-            docker compose ps
+            docker compose -f docker-compose.production.yml ps
           else
             echo "❌ Application deployment failed!"
             echo "Container logs:"
-            docker compose logs
+            docker compose -f docker-compose.production.yml logs
             echo "Container status:"
-            docker compose ps
+            docker compose -f docker-compose.production.yml ps
             echo "All running containers:"
             docker ps -a
             exit 1
@@ -182,6 +196,6 @@ jobs:
           echo "================================"
           echo "📦 Deployment Summary"
           echo "================================"
-          docker compose ps
+          docker compose -f docker-compose.production.yml ps
           echo ""
           echo "✅ Deployment completed!"
