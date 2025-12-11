@@ -24,14 +24,12 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          NEXT_PUBLIC_API_BASE_URL_LOCAL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL_LOCAL }}
-          NEXT_PUBLIC_API_BASE_URL_NGROK: ${{ secrets.NEXT_PUBLIC_API_BASE_URL_NGROK }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: MONGO_URI,SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,LOG_LEVEL,CORS_ORIGINS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,FRONTEND_URL,NEXT_PUBLIC_API_BASE_URL_LOCAL,NEXT_PUBLIC_API_BASE_URL_NGROK
+          envs: MONGO_URI,SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,LOG_LEVEL,CORS_ORIGINS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI,FRONTEND_URL
           script: |
             # Set working directory
             cd ~
@@ -63,24 +61,9 @@ jobs:
             FRONTEND_URL=${FRONTEND_URL}
             EOF
 
-            # Create root .env file for docker-compose
-            cat > .env << EOF
-            MONGO_URI=${MONGO_URI}
-            SECRET_KEY=${SECRET_KEY}
-            ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
-            LOG_LEVEL=${LOG_LEVEL}
-            CORS_ORIGINS=${CORS_ORIGINS}
-            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-            GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
-            FRONTEND_URL=${FRONTEND_URL}
-            NEXT_PUBLIC_API_BASE_URL_LOCAL=${NEXT_PUBLIC_API_BASE_URL_LOCAL}
-            NEXT_PUBLIC_API_BASE_URL_NGROK=${NEXT_PUBLIC_API_BASE_URL_NGROK}
-            EOF
-
             # Stop existing containers
             echo "Stopping existing containers..."
-            docker-compose -f docker-compose.production.yml down || true
+            docker compose -f docker-compose.production.yml down || true
 
             # Remove old images to save space (optional)
             echo "Cleaning up old images..."
@@ -88,12 +71,12 @@ jobs:
 
             # Build and start containers
             echo "Building and starting production containers..."
-            docker-compose -f docker-compose.production.yml up -d --build
+            docker compose -f docker-compose.production.yml up -d --build
 
             # Show running containers
             echo "Deployment complete! Running containers:"
-            docker-compose -f docker-compose.production.yml ps
+            docker compose -f docker-compose.production.yml ps
 
             # Show logs
             echo "Recent logs:"
-            docker-compose -f docker-compose.production.yml logs --tail=50
+            docker compose -f docker-compose.production.yml logs --tail=50
