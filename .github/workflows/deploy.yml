@@ -1,0 +1,187 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          # Navigate to the project directory (create if it doesn't exist)
+          cd ~/fifa-tracker || mkdir -p ~/fifa-tracker && cd ~/fifa-tracker
+
+          # Clone or pull the latest code
+          if [ -d ".git" ]; then
+            echo "Repository exists, pulling latest changes..."
+            git fetch origin
+            git reset --hard origin/main
+          else
+            echo "Cloning repository..."
+            git clone https://github.com/${{ github.repository }}.git .
+          fi
+
+          # Create .env file for backend
+          echo "Creating backend .env file with secrets..."
+          cat > backend/.env << EOF
+          ENVIRONMENT=production
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          ACCESS_TOKEN_EXPIRE_MINUTES=43200
+          LOG_LEVEL=INFO
+          EOF
+
+          # Create root .env file for docker-compose (if needed)
+          echo "Creating root .env file..."
+          cat > .env << EOF
+          ENVIRONMENT=production
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          ACCESS_TOKEN_EXPIRE_MINUTES=43200
+          LOG_LEVEL=INFO
+          EOF
+
+          # Verify .env files were created
+          echo "Verifying .env files..."
+          if [ -f "backend/.env" ]; then
+            echo "✅ backend/.env file created successfully"
+            echo "File contents (without values):"
+            cat backend/.env | sed 's/=.*/=***/' || echo "Could not display file contents"
+          else
+            echo "❌ backend/.env file was not created"
+            exit 1
+          fi
+
+          if [ -f ".env" ]; then
+            echo "✅ root .env file created successfully"
+          else
+            echo "⚠️  Warning: root .env file was not created"
+          fi
+
+          # Test environment variable loading (if script exists)
+          echo "Testing environment variable loading..."
+          if [ -f "backend/scripts/test_env.py" ]; then
+            cd backend
+            python3 scripts/test_env.py || echo "Warning: Could not run environment test"
+            cd ..
+          else
+            echo "⚠️  test_env.py script not found, skipping..."
+          fi
+
+          # Stop and remove ALL existing containers, networks, and volumes
+          echo "Stopping and removing ALL existing containers..."
+          docker compose down --remove-orphans --volumes --rmi all || true
+
+          # Force stop and remove any containers that might still be running
+          echo "Force stopping any remaining containers..."
+          docker stop $(docker ps -aq) 2>/dev/null || true
+          docker rm $(docker ps -aq) 2>/dev/null || true
+
+          # Remove all unused containers, networks, images, and volumes
+          echo "Cleaning up all unused Docker resources..."
+          docker system prune -a --volumes -f || true
+
+          # Remove any dangling images specifically
+          echo "Removing dangling images..."
+          docker image prune -a -f || true
+
+          # Build and start the application with force rebuild and no cache
+          echo "Building and starting application with fresh build..."
+          docker compose up -d --build --force-recreate --no-deps
+
+          # Wait a moment for the application to start
+          sleep 20
+
+          # Check if the application is running
+          echo "Checking application status..."
+          if curl -f http://localhost:3000/ > /dev/null 2>&1; then
+            echo "✅ Application deployed successfully!"
+            echo "Container status:"
+            docker compose ps
+          else
+            echo "❌ Application deployment failed!"
+            echo "Container logs:"
+            docker compose logs
+            echo "Container status:"
+            docker compose ps
+            echo "All running containers:"
+            docker ps -a
+            exit 1
+          fi
+
+          # Final cleanup of old images to save space
+          echo "Final cleanup of old Docker images..."
+          docker image prune -f
+
+          # Setup nginx configuration
+          echo "Setting up nginx configuration..."
+          if [ -f "scripts/setup_nginx.sh" ]; then
+            echo "✅ Nginx setup script found, executing..."
+            chmod +x scripts/setup_nginx.sh
+            sudo ./scripts/setup_nginx.sh
+            echo "✅ Nginx configuration completed"
+          elif [ -f "backend/scripts/setup_nginx.sh" ]; then
+            echo "✅ Nginx setup script found in backend, executing..."
+            chmod +x backend/scripts/setup_nginx.sh
+            sudo ./backend/scripts/setup_nginx.sh
+            echo "✅ Nginx configuration completed"
+          else
+            echo "⚠️  Nginx setup script not found, skipping..."
+            echo "Available files in scripts directory:"
+            ls -la scripts/ 2>/dev/null || echo "Root scripts directory not found"
+            ls -la backend/scripts/ 2>/dev/null || echo "Backend scripts directory not found"
+          fi
+
+          # Verify nginx is running and configured (if nginx was setup)
+          if command -v nginx &> /dev/null; then
+            echo "Verifying nginx status..."
+            if sudo systemctl is-active --quiet nginx; then
+              echo "✅ Nginx is running"
+              echo "Nginx status:"
+              sudo systemctl status nginx --no-pager -l
+            else
+              echo "⚠️  Nginx is not running"
+              echo "Attempting to start nginx..."
+              sudo systemctl start nginx || echo "Could not start nginx"
+              sudo systemctl status nginx --no-pager -l || true
+            fi
+
+            # Test nginx proxy to application
+            echo "Testing nginx proxy to application..."
+            sleep 5  # Give nginx a moment to fully start
+            if curl -f http://localhost/ > /dev/null 2>&1; then
+              echo "✅ Nginx proxy is working correctly!"
+            else
+              echo "⚠️  Nginx proxy test failed (this may be expected if nginx is not configured)"
+              echo "Nginx error logs:"
+              sudo tail -n 20 /var/log/nginx/error.log 2>/dev/null || echo "Could not read nginx error logs"
+            fi
+          else
+            echo "⚠️  Nginx not installed, skipping nginx checks"
+          fi
+
+          # Display final deployment summary
+          echo "================================"
+          echo "📦 Deployment Summary"
+          echo "================================"
+          docker compose ps
+          echo ""
+          echo "✅ Deployment completed!"

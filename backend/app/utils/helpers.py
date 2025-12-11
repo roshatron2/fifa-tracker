@@ -4,7 +4,8 @@ from app.models import User, Match, Tournament, RecentMatch
 from typing import List, Dict, Any
 from app.utils.logging import get_logger
 from app.utils.auth import user_helper
-from itertools import groupby
+from itertools import groupby, combinations
+import time
 
 logger = get_logger(__name__)
 
@@ -26,7 +27,7 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
     matches = []
     
     # Generate all unique pairs of players
-    player_pairs = list(itertools.combinations(player_ids, 2))
+    player_pairs = list(combinations(player_ids, 2))
     
     for round_num in range(rounds_per_matchup):
         for player1_id, player2_id in player_pairs:
@@ -87,7 +88,7 @@ def generate_missing_matches(existing_matches: List[dict], player_ids: List[str]
             existing_matchups[matchup_key] = existing_matchups.get(matchup_key, 0) + 1
     
     # Generate all required matchups
-    player_pairs = list(itertools.combinations(player_ids, 2))
+    player_pairs = list(combinations(player_ids, 2))
     new_matches = []
     
     for player1_id, player2_id in player_pairs:

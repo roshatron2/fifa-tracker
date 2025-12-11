@@ -17,7 +17,7 @@ router = APIRouter()
 # User Management Endpoints (moved from players.py)
 
 @router.post("/register", response_model=StandardResponse[User])
-async def register_user(user: UserCreate, current_user: UserInDB = Depends(get_current_active_user)):
+async def register_user(user: UserCreate):
     """Register a new user"""
     db = await get_database()
     

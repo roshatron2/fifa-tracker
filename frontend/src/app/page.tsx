@@ -137,8 +137,8 @@ function HomeContent() {
 
   // Separate useEffect for when selectedTournament changes
   useEffect(() => {
-    if (selectedTournament) {
-      const fetchTournamentData = async () => {
+    const fetchTournamentData = async () => {
+      if (selectedTournament) {
         try {
           // Fetch players for the selected tournament
           const players = await getTournamentPlayers(selectedTournament);
@@ -154,10 +154,28 @@ function HomeContent() {
         } catch (error) {
           console.error('Error fetching tournament standings:', error);
         }
-      };
+      } else {
+        // No tournament selected - fetch friends as available players
+        try {
+          const friendsList = await getFriends();
+          // Convert Friend type to User type for compatibility
+          const friendsAsUsers = friendsList.map(friend => ({
+            id: friend.id,
+            username: friend.username,
+            first_name: friend.first_name,
+            last_name: friend.last_name,
+            total_matches: friend.total_matches,
+            wins: friend.wins,
+            elo_rating: friend.elo_rating,
+          })) as User[];
+          setPlayers(friendsAsUsers);
+        } catch (error) {
+          console.error('Error fetching friends:', error);
+        }
+      }
+    };
 
-      fetchTournamentData();
-    }
+    fetchTournamentData();
   }, [selectedTournament]);
 
   const tabs = [
@@ -438,13 +456,15 @@ function HomeContent() {
                     : 'Not set'}
                 </p>
               </div>
-              <span
-                className={`text-white px-3 py-1 rounded-full text-xs sm:text-sm self-start sm:self-auto ${
-                  tournament?.completed ? 'bg-green-500' : 'bg-yellow-500'
-                }`}
-              >
-                {tournament?.completed ? 'Completed' : 'In Progress'}
-              </span>
+              {tournament && (
+                <span
+                  className={`text-white px-3 py-1 rounded-full text-xs sm:text-sm self-start sm:self-auto ${
+                    tournament.completed ? 'bg-green-500' : 'bg-yellow-500'
+                  }`}
+                >
+                  {tournament.completed ? 'Completed' : 'In Progress'}
+                </span>
+              )}
             </div>
           </div>
         </div>

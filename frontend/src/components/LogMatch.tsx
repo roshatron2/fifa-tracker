@@ -363,17 +363,12 @@ export default function LogMatch({
 
       <div className="mt-6">
         <button
-          className={`w-full font-medium py-3 px-4 rounded-lg transition-colors text-sm sm:text-base ${
-            !selectedTournament && !prePopulatedMatch?.id
-              ? 'bg-gray-500 cursor-not-allowed text-gray-300'
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
-          }`}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors text-sm sm:text-base"
           onClick={handleSubmit}
-          disabled={!selectedTournament && !prePopulatedMatch?.id}
         >
           {prePopulatedMatch?.id
             ? 'Update Match'
-            : isTournamentCompleted
+            : !selectedTournament || isTournamentCompleted
               ? 'Log Independent Match'
               : 'Log Match'}
         </button>
