@@ -17,16 +17,22 @@ jobs:
         echo "Testing port connectivity to ${{ secrets.SSH_HOST }}:${{ secrets.SSH_PORT }}"
         timeout 10 bash -c "</dev/tcp/${{ secrets.SSH_HOST }}/${{ secrets.SSH_PORT }}" && echo "✅ Port is reachable" || echo "❌ Port is not reachable (may be blocked by firewall)"
 
-    - name: Test SSH Connection
-      uses: appleboy/ssh-action@v1.0.3
+    - name: Setup SSH Agent
+      uses: webfactory/ssh-agent@v0.9.0
       with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.SSH_PORT }}
-        script: |
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Test SSH Connection
+      run: |
+        ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
           echo "✅ SSH connection successful!"
           echo "Current directory: $(pwd)"
           echo "User: $(whoami)"
           echo "Docker installed: $(command -v docker && echo 'Yes' || echo 'No')"
           echo "Docker Compose installed: $(command -v docker && docker compose version || echo 'No')"
+        ENDSSH
