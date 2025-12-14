@@ -30,26 +30,33 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(get_env_var("ACCESS_TOKEN_EXPIRE_MINUTES", "43200"))
     
-    # CORS
+    # CORS - Default origins for development and production
     CORS_ORIGINS: list = [
         "http://localhost:3000",  # React development server
         "http://localhost:8000",  # FastAPI development server
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
-        "https://fifa-tracker-web-five.vercel.app",  # New Vercel deployment
+        "https://fifa-tracker-web-five.vercel.app",  # Vercel deployment
     ]
     
-    # Allow CORS origins to be overridden by environment variable
+    # Allow CORS origins to be extended by environment variable
+    # Environment variable origins are ADDED to defaults (not replacing)
     _cors_origins_env = get_env_var("CORS_ORIGINS")
     if _cors_origins_env:
         # Parse CORS origins from environment variable, filtering out wildcards
-        origins = []
+        env_origins = []
         for origin in _cors_origins_env.split(","):
             origin = origin.strip()
             if origin and origin != "*":
-                origins.append(origin)
-        if origins:
-            CORS_ORIGINS = origins
+                # Normalize: remove trailing slash
+                normalized_origin = origin.rstrip('/')
+                if normalized_origin not in env_origins:
+                    env_origins.append(normalized_origin)
+        
+        # Merge environment origins with defaults (avoid duplicates)
+        for env_origin in env_origins:
+            if env_origin not in CORS_ORIGINS:
+                CORS_ORIGINS.append(env_origin)
     
     # Logging
     LOG_LEVEL: str = get_env_var("LOG_LEVEL", "INFO")
@@ -73,6 +80,15 @@ class Settings:
     GOOGLE_CLIENT_SECRET: str = get_env_var("GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI: str = get_env_var("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback")
     FRONTEND_URL: str = get_env_var("FRONTEND_URL", "http://localhost:3000")
+    
+    # Automatically add FRONTEND_URL to CORS_ORIGINS if not already present
+    # This helps in production where FRONTEND_URL is set but CORS_ORIGINS might not include it
+    if FRONTEND_URL:
+        # Normalize FRONTEND_URL (remove trailing slash)
+        normalized_frontend_url = FRONTEND_URL.rstrip('/')
+        # Check if it's already in CORS_ORIGINS
+        if normalized_frontend_url not in CORS_ORIGINS:
+            CORS_ORIGINS.append(normalized_frontend_url)
     
     # ELO Rating
     DEFAULT_ELO_RATING: int = 1200

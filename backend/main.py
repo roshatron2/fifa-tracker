@@ -105,17 +105,21 @@ logger.info(f"CORS Origins configured: {settings.CORS_ORIGINS}")
 clean_origins = []
 for origin in settings.CORS_ORIGINS:
     if origin and origin != "*":
-        if origin not in clean_origins:
-            clean_origins.append(origin)
+        # Normalize origin: remove trailing slashes
+        normalized_origin = origin.rstrip('/')
+        if normalized_origin not in clean_origins:
+            clean_origins.append(normalized_origin)
 
 logger.info(f"Clean CORS Origins: {clean_origins}")
 
+# Add CORS middleware BEFORE other middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=clean_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Request logging middleware
@@ -124,6 +128,18 @@ async def log_requests(request: Request, call_next):
     """Log all incoming HTTP requests with async logging"""
     start_time = time.time()
     
+    # Log CORS-related headers for debugging
+    origin = request.headers.get("origin")
+    if origin:
+        cors_log = f"🔍 CORS Request - Origin: {origin}, Method: {request.method}, Path: {request.url.path}"
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(logging_executor, logger.info, cors_log)
+        
+        # Check if origin is in allowed list
+        if origin not in clean_origins:
+            warning_log = f"⚠️  CORS WARNING: Origin '{origin}' not in allowed list: {clean_origins}"
+            loop.run_in_executor(logging_executor, logger.warning, warning_log)
+    
     # Log request details asynchronously (non-blocking)
     request_log = f"🌐 {request.method} {request.url.path} - Client: {request.client.host if request.client else 'unknown'}"
     loop = asyncio.get_event_loop()
@@ -131,6 +147,15 @@ async def log_requests(request: Request, call_next):
     
     # Process the request
     response = await call_next(request)
+    
+    # Log CORS response headers
+    if origin:
+        cors_headers = {
+            "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
+            "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
+        }
+        cors_response_log = f"🔍 CORS Response Headers: {cors_headers}"
+        loop.run_in_executor(logging_executor, logger.info, cors_response_log)
     
     # Calculate processing time
     process_time = time.time() - start_time
@@ -161,12 +186,18 @@ async def root():
 
 # CORS debug endpoint
 @app.get("/cors-debug")
-async def cors_debug():
+async def cors_debug(request: Request):
+    """Debug endpoint to check CORS configuration and request origin"""
+    origin = request.headers.get("origin", "No Origin header")
     return success_response(
         data={
-            "cors_origins": settings.CORS_ORIGINS,
+            "cors_origins_configured": settings.CORS_ORIGINS,
+            "clean_cors_origins": clean_origins,
+            "request_origin": origin,
+            "origin_allowed": origin in clean_origins if origin != "No Origin header" else None,
             "environment": settings.ENVIRONMENT,
-            "debug": settings.DEBUG
+            "debug": settings.DEBUG,
+            "frontend_url": settings.FRONTEND_URL,
         },
         message="CORS configuration retrieved"
     )
