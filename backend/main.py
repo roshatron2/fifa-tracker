@@ -9,6 +9,7 @@ from app.utils.logging import get_logger
 from app.models.response import success_response, error_response
 import time
 import asyncio
+import re
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
@@ -112,10 +113,31 @@ for origin in settings.CORS_ORIGINS:
 
 logger.info(f"Clean CORS Origins: {clean_origins}")
 
+# Custom function to check if origin is allowed
+# This allows both explicit origins and Vercel preview URLs (*.vercel.app)
+def is_origin_allowed(origin: str) -> bool:
+    """Check if an origin is allowed for CORS"""
+    if not origin:
+        return False
+    
+    # Check if it's in the explicit allowed list
+    if origin in clean_origins:
+        return True
+    
+    # Check if it matches Vercel preview URL pattern (*.vercel.app)
+    vercel_pattern = r"^https://.*\.vercel\.app$"
+    if re.match(vercel_pattern, origin):
+        logger.info(f"✅ Allowing Vercel preview URL: {origin}")
+        return True
+    
+    return False
+
+logger.info("CORS origin checker configured to allow Vercel preview URLs")
+
 # Add CORS middleware BEFORE other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=clean_origins,
+    allow_origin_func=is_origin_allowed,  # Use custom function for flexible origin checking
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

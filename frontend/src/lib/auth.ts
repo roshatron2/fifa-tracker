@@ -12,7 +12,9 @@ export async function register(
   try {
     const payload = { first_name, last_name, email, password, username };
 
-    const response = await axios.post(`${API_BASE_URL}/auth/register`, payload);
+    const response = await axios.post(`${API_BASE_URL}/auth/register`, payload, {
+      withCredentials: true,
+    });
     const { data } = response.data;
     
     // Store the access token if it's included in the response
@@ -35,7 +37,9 @@ export async function login(
     // The API expects username field, so we'll use the identifier as username
     const payload = { username: identifier, password };
 
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, payload);
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, payload, {
+      withCredentials: true,
+    });
     const { data } = response.data;
 
     // Store the access token if it's included in the response
@@ -69,7 +73,9 @@ export async function login(
 
 export async function onGoogleSignInClick(): Promise<void> {
   try {
-    const response = await axios.get(`${API_BASE_URL}/auth/google/login`);
+    const response = await axios.get(`${API_BASE_URL}/auth/google/login`, {
+      withCredentials: true,
+    });
     const { data } = response.data;
     window.location.href = data.auth_url;
   } catch (error) {
@@ -116,9 +122,15 @@ export async function refreshToken(): Promise<string | null> {
       return null;
     }
 
-    const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-      refresh_token: refreshToken,
-    });
+    const response = await axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      {
+        refresh_token: refreshToken,
+      },
+      {
+        withCredentials: true,
+      }
+    );
     const { data } = response.data;
 
     if (data?.access_token) {

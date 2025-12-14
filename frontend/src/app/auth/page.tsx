@@ -231,7 +231,7 @@ export default function AuthPage() {
       {/* Footer */}
       <footer className="text-center py-6 px-4">
         <p className="text-gray-400 text-sm">
-          © 2024 FIFA Tracker. All rights reserved.
+          © 2025 FIFA Tracker. All rights reserved.
         </p>
       </footer>
     </div>
