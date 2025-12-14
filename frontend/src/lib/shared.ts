@@ -183,12 +183,14 @@ export const createAuthenticatedRequest = () => {
 
   const config: {
     baseURL: string;
+    withCredentials: boolean;
     headers?: {
       Authorization: string;
       'Content-Type': string;
     };
   } = {
     baseURL: finalBaseUrl,
+    withCredentials: true,
   };
 
   if (token) {
@@ -244,9 +246,15 @@ export const createAuthenticatedRequest = () => {
         );
         if (refreshTokenValue) {
           try {
-            const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-              refresh_token: refreshTokenValue,
-            });
+            const response = await axios.post(
+              `${API_BASE_URL}/auth/refresh`,
+              {
+                refresh_token: refreshTokenValue,
+              },
+              {
+                withCredentials: true,
+              }
+            );
 
             const { data } = response.data;
             if (data?.access_token) {
