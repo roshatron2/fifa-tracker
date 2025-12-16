@@ -113,31 +113,18 @@ for origin in settings.CORS_ORIGINS:
 
 logger.info(f"Clean CORS Origins: {clean_origins}")
 
-# Custom function to check if origin is allowed
-# This allows both explicit origins and Vercel preview URLs (*.vercel.app)
-def is_origin_allowed(origin: str) -> bool:
-    """Check if an origin is allowed for CORS"""
-    if not origin:
-        return False
-    
-    # Check if it's in the explicit allowed list
-    if origin in clean_origins:
-        return True
-    
-    # Check if it matches Vercel preview URL pattern (*.vercel.app)
-    vercel_pattern = r"^https://.*\.vercel\.app$"
-    if re.match(vercel_pattern, origin):
-        logger.info(f"✅ Allowing Vercel preview URL: {origin}")
-        return True
-    
-    return False
+# Vercel preview URL pattern: allows any *.vercel.app subdomain
+# This includes both production and preview deployments
+vercel_preview_pattern = r"https://.*\.vercel\.app"
 
-logger.info("CORS origin checker configured to allow Vercel preview URLs")
+logger.info(f"Vercel preview URL pattern: {vercel_preview_pattern}")
 
 # Add CORS middleware BEFORE other middleware
+# Use allow_origin_regex for Vercel preview URLs pattern matching
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_func=is_origin_allowed,  # Use custom function for flexible origin checking
+    allow_origins=clean_origins,  # Explicit allowed origins
+    allow_origin_regex=vercel_preview_pattern,  # Regex pattern for Vercel preview URLs
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
