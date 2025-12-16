@@ -131,9 +131,6 @@ async def register_user(user: UserCreate):
 async def login(user_data: UserLogin):
     """Login to get access token"""
     db = await get_database()
-    print(f"User data: {user_data}")
-    print(f"Username: {user_data.username}")
-    print(f"Password: {user_data.password}")
     
     # Find user by username or email
     user = await db.users.find_one({

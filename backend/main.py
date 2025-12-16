@@ -137,41 +137,17 @@ async def log_requests(request: Request, call_next):
     """Log all incoming HTTP requests with async logging"""
     start_time = time.time()
     
-    # Log CORS-related headers for debugging
+    # Get origin for CORS checks
     origin = request.headers.get("origin")
     if origin:
-        cors_log = f"🔍 CORS Request - Origin: {origin}, Method: {request.method}, Path: {request.url.path}"
-        loop = asyncio.get_event_loop()
-        loop.run_in_executor(logging_executor, logger.info, cors_log)
-        
         # Check if origin is in allowed list
         if origin not in clean_origins:
             warning_log = f"⚠️  CORS WARNING: Origin '{origin}' not in allowed list: {clean_origins}"
+            loop = asyncio.get_event_loop()
             loop.run_in_executor(logging_executor, logger.warning, warning_log)
-    
-    # Log request details asynchronously (non-blocking)
-    request_log = f"🌐 {request.method} {request.url.path} - Client: {request.client.host if request.client else 'unknown'}"
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(logging_executor, logger.info, request_log)
     
     # Process the request
     response = await call_next(request)
-    
-    # Log CORS response headers
-    if origin:
-        cors_headers = {
-            "Access-Control-Allow-Origin": response.headers.get("access-control-allow-origin"),
-            "Access-Control-Allow-Credentials": response.headers.get("access-control-allow-credentials"),
-        }
-        cors_response_log = f"🔍 CORS Response Headers: {cors_headers}"
-        loop.run_in_executor(logging_executor, logger.info, cors_response_log)
-    
-    # Calculate processing time
-    process_time = time.time() - start_time
-    
-    # Log response details asynchronously (non-blocking)
-    response_log = f"✅ {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s"
-    loop.run_in_executor(logging_executor, logger.info, response_log)
     
     return response
 
