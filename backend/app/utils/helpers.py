@@ -15,6 +15,7 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
     Generate round-robin matches for all players in a tournament.
     Each player plays against every other player the specified number of times.
     For even numbered rounds, player positions are alternated (player1 becomes player2 and vice versa).
+    Matches are scheduled to minimize waiting time between matches for each player.
     
     Args:
         player_ids: List of player IDs in the tournament
@@ -22,15 +23,18 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
         rounds_per_matchup: Number of times each pair of players should play against each other
         
     Returns:
-        List of match dictionaries ready to be inserted into the database
+        List of match dictionaries ready to be inserted into the database, ordered to minimize waiting time
     """
-    matches = []
+    # Sort player_ids to ensure consistent ordering regardless of input order
+    sorted_player_ids = sorted(player_ids)
     
-    # Generate all unique pairs of players
-    player_pairs = list(combinations(player_ids, 2))
+    if len(sorted_player_ids) < 2:
+        return []
     
+    # Generate all required matchups with their round information
+    all_matchups = []
     for round_num in range(rounds_per_matchup):
-        for player1_id, player2_id in player_pairs:
+        for player1_id, player2_id in combinations(sorted_player_ids, 2):
             # For even-numbered rounds (1, 3, 5...), reverse the player positions
             if round_num % 2 == 1:
                 actual_player1_id = str(player2_id)
@@ -39,9 +43,55 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
                 actual_player1_id = str(player1_id)
                 actual_player2_id = str(player2_id)
             
-            match_dict = {
+            all_matchups.append({
                 "player1_id": actual_player1_id,
                 "player2_id": actual_player2_id,
+                "round_num": round_num
+            })
+    
+    # Schedule matches to minimize waiting time using a greedy algorithm
+    scheduled_matches = []
+    player_last_match = {player_id: -1 for player_id in sorted_player_ids}
+    
+    # Track which matchups have been scheduled
+    remaining_matchups = all_matchups.copy()
+    
+    def calculate_wait_time(player_id):
+        """Calculate how many matches since this player last played"""
+        if player_last_match[player_id] < 0:
+            # Player hasn't played yet - give high priority
+            return len(scheduled_matches) + 1000
+        return len(scheduled_matches) - player_last_match[player_id]
+    
+    while remaining_matchups:
+        best_matchup = None
+        best_score = -1
+        
+        # Find the matchup that minimizes waiting time
+        for matchup in remaining_matchups:
+            p1_id = matchup["player1_id"]
+            p2_id = matchup["player2_id"]
+            
+            p1_wait = calculate_wait_time(p1_id)
+            p2_wait = calculate_wait_time(p2_id)
+            
+            # Score: prioritize matchups where at least one player has waited a long time
+            # Use minimum wait time as primary factor, sum as tiebreaker
+            min_wait = min(p1_wait, p2_wait)
+            total_wait = p1_wait + p2_wait
+            
+            # Score combines both factors (min_wait is more important)
+            score = min_wait * 10000 + total_wait
+            
+            if score > best_score:
+                best_score = score
+                best_matchup = matchup
+        
+        if best_matchup:
+            # Schedule this matchup
+            match_dict = {
+                "player1_id": best_matchup["player1_id"],
+                "player2_id": best_matchup["player2_id"],
                 "player1_goals": 0,
                 "player2_goals": 0,
                 "tournament_id": str(tournament_id),
@@ -51,10 +101,17 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
                 "completed": False,  # Not completed initially
                 "date": datetime.now()
             }
-            matches.append(match_dict)
+            scheduled_matches.append(match_dict)
+            
+            # Update last match indices for both players
+            player_last_match[best_matchup["player1_id"]] = len(scheduled_matches) - 1
+            player_last_match[best_matchup["player2_id"]] = len(scheduled_matches) - 1
+            
+            # Remove this matchup from remaining
+            remaining_matchups.remove(best_matchup)
     
-    logger.info(f"Generated {len(matches)} round-robin matches for {len(player_ids)} players with {rounds_per_matchup} rounds per matchup")
-    return matches
+    logger.info(f"Generated {len(scheduled_matches)} round-robin matches for {len(player_ids)} players with {rounds_per_matchup} rounds per matchup")
+    return scheduled_matches
 
 
 def generate_missing_matches(existing_matches: List[dict], player_ids: List[str], tournament_id: str, rounds_per_matchup: int = 2) -> List[dict]:
@@ -87,8 +144,11 @@ def generate_missing_matches(existing_matches: List[dict], player_ids: List[str]
             matchup_key = (p1_id, p2_id)
             existing_matchups[matchup_key] = existing_matchups.get(matchup_key, 0) + 1
     
+    # Sort player_ids to ensure consistent ordering regardless of input order
+    sorted_player_ids = sorted(player_ids)
+    
     # Generate all required matchups
-    player_pairs = list(combinations(player_ids, 2))
+    player_pairs = list(combinations(sorted_player_ids, 2))
     new_matches = []
     
     for player1_id, player2_id in player_pairs:
