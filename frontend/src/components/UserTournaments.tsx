@@ -58,6 +58,8 @@ export default function UserTournaments({
     start_date: '',
     end_date: '',
     completed: false,
+    rounds_per_matchup: 2,
+    half_length: 4,
   });
 
   // Toast notification functions
@@ -159,6 +161,8 @@ export default function UserTournaments({
         : '',
       end_date: tournament.end_date ? tournament.end_date.split('T')[0] : '',
       completed: tournament.completed,
+      rounds_per_matchup: tournament.rounds_per_matchup || 2,
+      half_length: tournament.half_length || 4,
     });
   };
 
@@ -173,7 +177,9 @@ export default function UserTournaments({
         undefined, // player_ids - not updating for now
         editForm.completed,
         editForm.start_date || undefined,
-        editForm.end_date || undefined
+        editForm.end_date || undefined,
+        editForm.rounds_per_matchup,
+        editForm.half_length
       );
 
       if (updatedTournament) {
@@ -415,6 +421,49 @@ export default function UserTournaments({
                           }
                           className="w-full bg-[#1a1f2e] border border-gray-600 rounded-lg px-3 py-2 text-white"
                         />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Rounds per Matchup
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={editForm.rounds_per_matchup}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              rounds_per_matchup: parseInt(e.target.value) || 2,
+                            }))
+                          }
+                          className="w-full bg-[#1a1f2e] border border-gray-600 rounded-lg px-3 py-2 text-white"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Number of times each player plays against each other
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Half Length (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          min="3"
+                          max="6"
+                          value={editForm.half_length}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              half_length: parseInt(e.target.value) || 4,
+                            }))
+                          }
+                          className="w-full bg-[#1a1f2e] border border-gray-600 rounded-lg px-3 py-2 text-white"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Time taken for each half (3-6 minutes)
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">

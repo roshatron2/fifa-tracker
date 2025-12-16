@@ -3,6 +3,7 @@ import { createTournament, getFriends, getPlayers } from '@/lib/api';
 import { Friend, User } from '@/types';
 import { useEffect, useRef, useState } from 'react';
 import UserTournaments from './UserTournaments';
+import CustomDropdown from './CustomDropdown';
 
 interface SettingsProps {
   onTournamentCreated?: (
@@ -22,6 +23,9 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create');
+  const [roundsPerMatchup, setRoundsPerMatchup] = useState<number>(2);
+  const [halfLength, setHalfLength] = useState<number>(4);
+  const [errors, setErrors] = useState<{ roundsPerMatchup?: string; halfLength?: string }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,7 +118,57 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
     setPlayer_ids(prev => prev.filter(id => id !== playerId));
   };
 
+  // Calculate estimated tournament time
+  const calculateEstimatedTime = () => {
+    // Count total players (selected players + current user)
+    const totalPlayers = user 
+      ? selectedPlayers.length + (selectedPlayers.some(p => p.id === user.id) ? 0 : 1)
+      : selectedPlayers.length;
+    
+    if (totalPlayers < 2) {
+      return null;
+    }
+    
+    // Calculate number of unique matchups: n * (n-1) / 2
+    const uniqueMatchups = (totalPlayers * (totalPlayers - 1)) / 2;
+    
+    // Total matches = unique matchups * rounds per matchup
+    const totalMatches = uniqueMatchups * roundsPerMatchup;
+    
+    // Time per match = half_length * 2 (two halves)
+    const timePerMatch = halfLength * 2;
+    
+    // Total time in minutes
+    const totalMinutes = totalMatches * timePerMatch;
+    
+    // Convert to hours and minutes
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return { hours, minutes, totalMatches };
+  };
+
+  const estimatedTime = calculateEstimatedTime();
+
   const handleCreateTournament = async () => {
+    // Validate required fields
+    const newErrors: { roundsPerMatchup?: string; halfLength?: string } = {};
+    
+    if (!roundsPerMatchup || roundsPerMatchup < 1) {
+      newErrors.roundsPerMatchup = 'Rounds per matchup is required and must be at least 1';
+    }
+    
+    if (!halfLength || halfLength < 3 || halfLength > 6) {
+      newErrors.halfLength = 'Half length is required and must be between 3 and 6 minutes';
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    setErrors({});
+    
     try {
       // Ensure current user is included in player_ids
       const finalPlayerIds = [...player_ids];
@@ -125,7 +179,9 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
       const tournament = await createTournament(
         name,
         description,
-        finalPlayerIds
+        finalPlayerIds,
+        roundsPerMatchup,
+        halfLength
       );
       if (tournament) {
         // Reset form
@@ -133,6 +189,9 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
         setDescription('');
         setPlayer_ids([]);
         setSelectedPlayers([]);
+        setRoundsPerMatchup(2);
+        setHalfLength(4);
+        setErrors({});
 
         // Switch to manage tab to show the new tournament
         setActiveTab('manage');
@@ -175,13 +234,13 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
         </div>
 
         {activeTab === 'create' ? (
-          <div>
+          <div style={{ overflow: 'visible' }}>
             <h2 className="text-2xl font-bold mb-2">Tournament Management</h2>
             <p className="text-gray-400 mb-6">
               Create new tournaments and select players
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-4" style={{ overflow: 'visible', position: 'relative' }}>
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Tournament Name
@@ -224,6 +283,80 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
                     type="date"
                     className="w-full bg-[#2d3748] border border-gray-600 rounded-lg px-3 py-2 text-white"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Rounds per Matchup <span className="text-red-400">*</span>
+                  </label>
+                  <CustomDropdown
+                    options={[
+                      { value: '1', label: '1' },
+                      { value: '2', label: '2' }
+                    ]}
+                    value={roundsPerMatchup.toString()}
+                    onChange={value => {
+                      const numValue = parseInt(value);
+                      setRoundsPerMatchup(numValue);
+                      if (errors.roundsPerMatchup) {
+                        setErrors(prev => ({ ...prev, roundsPerMatchup: undefined }));
+                      }
+                    }}
+                    placeholder="Select rounds"
+                    className={errors.roundsPerMatchup ? 'border-red-500' : ''}
+                  />
+                  {errors.roundsPerMatchup && (
+                    <p className="text-xs text-red-400 mt-1">{errors.roundsPerMatchup}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Number of times each player plays against each other
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Half Length (minutes) <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newValue = Math.max(3, halfLength - 1);
+                        setHalfLength(newValue);
+                        if (errors.halfLength) {
+                          setErrors(prev => ({ ...prev, halfLength: undefined }));
+                        }
+                      }}
+                      className="w-12 h-12 bg-[#2d3748] border border-gray-600 rounded-lg flex items-center justify-center text-white text-xl font-bold transition-colors hover:bg-[#374151]"
+                    >
+                      -
+                    </button>
+                    <div className="flex-1 bg-[#2d3748] border border-gray-600 rounded-lg px-4 py-3 text-center">
+                      <span className="text-white text-2xl font-bold">
+                        {halfLength}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newValue = Math.min(6, halfLength + 1);
+                        setHalfLength(newValue);
+                        if (errors.halfLength) {
+                          setErrors(prev => ({ ...prev, halfLength: undefined }));
+                        }
+                      }}
+                      className="w-12 h-12 bg-[#2d3748] border border-gray-600 rounded-lg flex items-center justify-center text-white text-xl font-bold transition-colors hover:bg-[#374151]"
+                    >
+                      +
+                    </button>
+                  </div>
+                  {errors.halfLength && (
+                    <p className="text-xs text-red-400 mt-1">{errors.halfLength}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Time taken for each half (3-6 minutes)
+                  </p>
                 </div>
               </div>
 
@@ -308,6 +441,28 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
                   </div>
                 )}
               </div>
+
+              {estimatedTime && (
+                <div className="bg-[#2d3748] border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">
+                    Tournament Estimate
+                  </h3>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Total Matches:</span>
+                      <span className="text-white font-medium">{estimatedTime.totalMatches}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Estimated Time:</span>
+                      <span className="text-white font-medium">
+                        {estimatedTime.hours > 0 && `${estimatedTime.hours} hour${estimatedTime.hours > 1 ? 's' : ''} `}
+                        {estimatedTime.minutes > 0 && `${estimatedTime.minutes} minute${estimatedTime.minutes > 1 ? 's' : ''}`}
+                        {estimatedTime.hours === 0 && estimatedTime.minutes === 0 && '0 minutes'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleCreateTournament}

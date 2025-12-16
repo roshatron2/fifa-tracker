@@ -10,7 +10,8 @@ class TournamentCreate(BaseModel):
     description: Optional[str] = None
     player_ids: List[str] = Field(default_factory=list)
     completed: bool = False
-    rounds_per_matchup: int = Field(default=2, ge=1, description="Number of times each player plays against each other")
+    rounds_per_matchup: int = Field(ge=1, description="Number of times each player plays against each other")
+    half_length: int = Field(ge=3, le=6, description="Match half length in minutes (3-6 minutes)")
 
 
 class Tournament(BaseModel):
@@ -26,6 +27,7 @@ class Tournament(BaseModel):
     owner_id: Optional[str] = None
     old_format: bool = False
     rounds_per_matchup: int = Field(default=2, ge=1, description="Number of times each player plays against each other")
+    half_length: int = Field(default=4, ge=3, le=6, description="Match half length in minutes (3-6 minutes)")
 
 
 class TournamentPlayerStats(BaseModel):

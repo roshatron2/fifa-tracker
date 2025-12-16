@@ -37,6 +37,10 @@ def tournament_helper(tournament : Tournament):
     if "rounds_per_matchup" not in result:
         result["rounds_per_matchup"] = 2
     
+    # Ensure half_length has a default value for older tournaments
+    if "half_length" not in result:
+        result["half_length"] = 4
+    
     return result
 
 async def get_player_last_5_matches(db, player_id: str, tournament_id: str = None) -> List[str]:
@@ -113,6 +117,7 @@ class TournamentUpdate(BaseModel):
     description: Optional[str] = None
     completed: Optional[bool] = None
     rounds_per_matchup: Optional[int] = Field(None, ge=1, description="Number of times each player plays against each other")
+    half_length: Optional[int] = Field(None, ge=3, le=6, description="Match half length in minutes (3-6 minutes)")
 
 @router.post("/", response_model=StandardResponse[Tournament])
 async def create_tournament(tournament: TournamentCreate, current_user: UserInDB = Depends(get_current_active_user)):
@@ -152,7 +157,8 @@ async def create_tournament(tournament: TournamentCreate, current_user: UserInDB
         matches = generate_round_robin_matches(
             tournament.player_ids, 
             tournament_id, 
-            tournament.rounds_per_matchup
+            tournament.rounds_per_matchup,
+            tournament.half_length
         )
         
         if matches:
@@ -385,10 +391,12 @@ async def update_tournament(tournament_id: str, tournament_update: TournamentUpd
         
         # Generate new round-robin matches
         new_rounds_per_matchup = update_data.get("rounds_per_matchup", tournament.get("rounds_per_matchup", 2))
+        new_half_length = update_data.get("half_length", tournament.get("half_length", 4))
         new_matches = generate_round_robin_matches(
             tournament["player_ids"], 
             tournament_id, 
-            new_rounds_per_matchup
+            new_rounds_per_matchup,
+            new_half_length
         )
         
         match_ids = []
@@ -491,11 +499,13 @@ async def add_player_to_tournament(tournament_id: str, player_request: PlayerIdR
     if len(tournament["player_ids"]) >= 2:
         from app.utils.helpers import generate_missing_matches
         rounds_per_matchup = tournament.get("rounds_per_matchup", 2)
+        half_length = tournament.get("half_length", 4)
         new_matches = generate_missing_matches(
             existing_matches,
             tournament["player_ids"], 
             tournament_id, 
-            rounds_per_matchup
+            rounds_per_matchup,
+            half_length
         )
         
         if new_matches:
@@ -618,11 +628,13 @@ async def remove_player_from_tournament(tournament_id: str, player_id: str, curr
     if len(tournament["player_ids"]) >= 2:
         from app.utils.helpers import generate_missing_matches
         rounds_per_matchup = tournament.get("rounds_per_matchup", 2)
+        half_length = tournament.get("half_length", 4)
         new_matches = generate_missing_matches(
             matches_to_keep,
             tournament["player_ids"], 
             tournament_id, 
-            rounds_per_matchup
+            rounds_per_matchup,
+            half_length
         )
         
         if new_matches:

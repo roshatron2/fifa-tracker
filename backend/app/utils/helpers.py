@@ -10,7 +10,7 @@ import time
 logger = get_logger(__name__)
 
 
-def generate_round_robin_matches(player_ids: List[str], tournament_id: str, rounds_per_matchup: int = 2) -> List[dict]:
+def generate_round_robin_matches(player_ids: List[str], tournament_id: str, rounds_per_matchup: int = 2, half_length: int = 4) -> List[dict]:
     """
     Generate round-robin matches for all players in a tournament.
     Each player plays against every other player the specified number of times.
@@ -21,6 +21,7 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
         player_ids: List of player IDs in the tournament
         tournament_id: The tournament ID these matches belong to
         rounds_per_matchup: Number of times each pair of players should play against each other
+        half_length: Match half length in minutes (3-6 minutes)
         
     Returns:
         List of match dictionaries ready to be inserted into the database, ordered to minimize waiting time
@@ -97,7 +98,7 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
                 "tournament_id": str(tournament_id),
                 "team1": "",  # Blank as requested
                 "team2": "",  # Blank as requested
-                "half_length": 4,  # Default value
+                "half_length": half_length,
                 "completed": False,  # Not completed initially
                 "date": datetime.now()
             }
@@ -114,7 +115,7 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
     return scheduled_matches
 
 
-def generate_missing_matches(existing_matches: List[dict], player_ids: List[str], tournament_id: str, rounds_per_matchup: int = 2) -> List[dict]:
+def generate_missing_matches(existing_matches: List[dict], player_ids: List[str], tournament_id: str, rounds_per_matchup: int = 2, half_length: int = 4) -> List[dict]:
     """
     Generate only the missing matches to complete the round-robin format while preserving existing matches.
     For even numbered rounds, player positions are alternated (player1 becomes player2 and vice versa).
@@ -124,6 +125,7 @@ def generate_missing_matches(existing_matches: List[dict], player_ids: List[str]
         player_ids: Current list of all player IDs in the tournament
         tournament_id: The tournament ID these matches belong to
         rounds_per_matchup: Number of times each pair of players should play against each other
+        half_length: Match half length in minutes (3-6 minutes)
         
     Returns:
         List of new match dictionaries that need to be created
@@ -176,7 +178,7 @@ def generate_missing_matches(existing_matches: List[dict], player_ids: List[str]
                     "tournament_id": str(tournament_id),
                     "team1": "",  # Blank as requested
                     "team2": "",  # Blank as requested
-                    "half_length": 4,  # Default value
+                    "half_length": half_length,
                     "completed": False,  # Not completed initially
                     "date": datetime.now()
                 }

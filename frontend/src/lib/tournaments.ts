@@ -63,7 +63,9 @@ export async function updateTournament(
   player_ids?: string[],
   completed?: boolean,
   start_date?: string,
-  end_date?: string
+  end_date?: string,
+  rounds_per_matchup?: number,
+  half_length?: number
 ): Promise<Tournament | null> {
   try {
     const axiosInstance = createAuthenticatedRequest();
@@ -74,6 +76,8 @@ export async function updateTournament(
     if (completed !== undefined) payload.completed = completed;
     if (start_date !== undefined) payload.start_date = start_date;
     if (end_date !== undefined) payload.end_date = end_date;
+    if (rounds_per_matchup !== undefined) payload.rounds_per_matchup = rounds_per_matchup;
+    if (half_length !== undefined) payload.half_length = half_length;
 
     const response = await axiosInstance.put(
       `/tournaments/${tournament_id}/`,
@@ -90,15 +94,20 @@ export async function updateTournament(
 export async function createTournament(
   name: string,
   description: string,
-  player_ids: string[]
+  player_ids: string[],
+  rounds_per_matchup?: number,
+  half_length?: number
 ): Promise<Tournament | null> {
   try {
     const axiosInstance = createAuthenticatedRequest();
-    const response = await axiosInstance.post('/tournaments/', {
+    const payload: Record<string, unknown> = {
       name,
       description,
       player_ids,
-    });
+    };
+    if (rounds_per_matchup !== undefined) payload.rounds_per_matchup = rounds_per_matchup;
+    if (half_length !== undefined) payload.half_length = half_length;
+    const response = await axiosInstance.post('/tournaments/', payload);
     const { data } = response.data;
     return data;
   } catch (error) {

@@ -83,6 +83,8 @@ export interface Tournament {
   start_date: string;
   end_date: string;
   owner_id?: string;
+  rounds_per_matchup?: number;
+  half_length?: number;
 }
 
 export interface MatchResult {
