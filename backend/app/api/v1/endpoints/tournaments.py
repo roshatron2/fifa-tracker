@@ -70,9 +70,13 @@ async def get_player_last_5_matches(db, player_id: str, tournament_id: str = Non
         if tournament_id:
             query["tournament_id"] = tournament_id
         
-        # Get matches sorted by date (most recent first)
-        matches_cursor = db.matches.find(query).sort("date", -1).limit(5)
-        matches = await matches_cursor.to_list(5)
+        # Get matches and sort by completion_date (with date as fallback)
+        matches_cursor = db.matches.find(query)
+        matches = await matches_cursor.to_list(100)  # Get more than needed for sorting
+        
+        # Sort by completion_date (most recent first), fallback to date if completion_date is None
+        matches.sort(key=lambda m: m.get("completion_date") or m.get("date", datetime.min), reverse=True)
+        matches = matches[:5]  # Take only the first 5
         
         # Convert matches to simple result characters
         results = []
@@ -309,6 +313,7 @@ async def get_tournament_matches(
             "team2": match.get("team2", "Unknown"),
             "half_length": match.get("half_length", 4),
             "completed": match.get("completed", False),  # Include completed status
+            "completion_date": match.get("completion_date"),  # Include completion_date if available
             "tournament_name": tournament["name"] if tournament else None
         }
         
@@ -787,7 +792,11 @@ async def add_match_to_tournament(tournament_id: str, match: Match, current_user
     tournament : Tournament = await db.tournaments.find_one({"_id": ObjectId(tournament_id)})
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
-    await db.matches.insert_one(match.model_dump())
+    match_dict = match.model_dump()
+    # Ensure completion_date is always set - use current time if completed, None otherwise
+    if "completion_date" not in match_dict or match_dict.get("completion_date") is None:
+        match_dict["completion_date"] = datetime.now() if match.completed else None
+    await db.matches.insert_one(match_dict)
     await db.tournaments.update_one({"_id": ObjectId(tournament_id)}, {"$set": {"matches_count": tournament["matches_count"] + 1}})
     tournament["matches_count"] = tournament["matches_count"] + 1
     return Tournament(**tournament_helper(tournament))
@@ -872,6 +881,18 @@ async def edit_match_in_tournament(
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
+    
+    # Handle completion_date:
+    # - Set to current time if being completed for the first time (completed=True and no completion_date)
+    # - Once set, completion_date is immutable (represents when match was FIRST completed)
+    # - For old matches without completion_date, ensure it's set (None if not completed)
+    if update_data.get("completed") and not match.get("completion_date"):
+        # Match is being completed for the first time - set completion_date
+        update_data["completion_date"] = datetime.now()
+    elif "completion_date" not in match:
+        # Old match without completion_date - ensure field exists (None if not completed)
+        update_data["completion_date"] = None
+    # If completion_date already exists, it remains unchanged (immutable)
     
     # Update the match
     await db.matches.update_one(

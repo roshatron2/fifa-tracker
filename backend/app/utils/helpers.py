@@ -100,7 +100,8 @@ def generate_round_robin_matches(player_ids: List[str], tournament_id: str, roun
                 "team2": "",  # Blank as requested
                 "half_length": half_length,
                 "completed": False,  # Not completed initially
-                "date": datetime.now()
+                "date": datetime.now(),
+                "completion_date": None  # Will be set when match is completed
             }
             scheduled_matches.append(match_dict)
             
@@ -180,7 +181,8 @@ def generate_missing_matches(existing_matches: List[dict], player_ids: List[str]
                     "team2": "",  # Blank as requested
                     "half_length": half_length,
                     "completed": False,  # Not completed initially
-                    "date": datetime.now()
+                    "date": datetime.now(),
+                    "completion_date": None  # Will be set when match is completed
                 }
                 new_matches.append(match_dict)
                 
@@ -218,6 +220,8 @@ async def match_helper(match : Match, db) -> dict:
                 "team1": match.get("team1", "Unknown"),
                 "team2": match.get("team2", "Unknown"),
                 "half_length": match.get("half_length", 4),  # Default to 4 minutes if not set
+                "completed": match.get("completed", False),
+                "completion_date": match.get("completion_date"),
             }
         
         # Find players
@@ -249,6 +253,7 @@ async def match_helper(match : Match, db) -> dict:
             "team2": match.get("team2", "Unknown"),
             "half_length": match.get("half_length", 4),  # Default to 4 minutes if not set
             "completed": match.get("completed", False),  # Include completed status
+            "completion_date": match.get("completion_date"),  # Include completion_date if available
         }
         
         # Add tournament info if available
@@ -596,13 +601,18 @@ async def calculate_user_detailed_stats(user_id: str, db) -> Dict[str, Any]:
     })
     
     # Get user's last 5 completed matches
-    user_matches = await db.matches.find({
+    user_matches_cursor = db.matches.find({
         "$or": [
             {"player1_id": user_id},
             {"player2_id": user_id}
         ],
         "completed": True
-    }).sort("date", -1).limit(5).to_list(5)
+    })
+    user_matches = await user_matches_cursor.to_list(100)  # Get more than needed for sorting
+    
+    # Sort by completion_date (most recent first), fallback to date if completion_date is None
+    user_matches.sort(key=lambda m: m.get("completion_date") or m.get("date", datetime.min), reverse=True)
+    user_matches = user_matches[:5]  # Take only the first 5
     
     # Convert matches to RecentMatch format
     recent_matches = []

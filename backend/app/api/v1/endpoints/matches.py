@@ -29,6 +29,8 @@ async def record_match(match: MatchCreate, current_user: UserInDB = Depends(get_
     
     match_dict = match.model_dump()
     match_dict["date"] = datetime.now()
+    # Always set completion_date - set to current time if completed, None otherwise
+    match_dict["completion_date"] = datetime.now() if match.completed else None
     new_match = await db.matches.insert_one(match_dict)
 
     # Only update tournament if tournament_id is provided
@@ -181,6 +183,18 @@ async def update_match(match_id: str, match_update: MatchUpdate, current_user: U
             "half_length": match_update.half_length,
             "completed": match_update.completed,
         }
+        
+        # Handle completion_date:
+        # - Set to current time if being completed for the first time (completed=True and no completion_date)
+        # - Once set, completion_date is immutable (represents when match was FIRST completed)
+        # - For old matches without completion_date, ensure it's set (None if not completed)
+        if match_update.completed and not match.get("completion_date"):
+            # Match is being completed for the first time - set completion_date
+            update_data["completion_date"] = datetime.now()
+        elif "completion_date" not in match:
+            # Old match without completion_date - ensure field exists (None if not completed)
+            update_data["completion_date"] = None
+        # If completion_date already exists, it remains unchanged (immutable)
         
         update_result = await db.matches.update_one(
             {"_id": ObjectId(match_id)},

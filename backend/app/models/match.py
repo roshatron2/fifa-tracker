@@ -27,6 +27,7 @@ class Match(BaseModel):
     tournament_name: Optional[str] = None
     half_length: int
     completed: bool = False
+    completion_date: Optional[datetime] = None
 
 
 class MatchUpdate(BaseModel):
