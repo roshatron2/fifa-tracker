@@ -115,9 +115,7 @@ export default function TournamentStandings({
                 <td className="py-3 px-1 text-center">
                   <div className="flex justify-center gap-2">
                     {player.last_5_matches
-                      ?.slice()
-                      .reverse()
-                      .map((result, matchIndex) => {
+                      ?.map((result, matchIndex) => {
                         if (result === '-') {
                           return (
                             <div

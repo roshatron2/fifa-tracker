@@ -97,9 +97,11 @@ async def get_player_last_5_matches(db, player_id: str, tournament_id: str = Non
             else:
                 results.append("D")  # Draw
         
-        # Pad with '-' if less than 5 matches
+        # Reverse results so oldest match is first (leftmost when displayed)
+        
+        # Pad with '-' at the beginning if less than 5 matches (oldest positions)
         while len(results) < 5:
-            results.append("-")
+            results.insert(0, "-")
         
         return results
         
