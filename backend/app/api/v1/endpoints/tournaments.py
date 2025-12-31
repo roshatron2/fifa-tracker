@@ -348,7 +348,7 @@ async def get_tournament(tournament_id: str, current_user: UserInDB = Depends(ge
         message="Tournament retrieved successfully"
     )
 
-@router.put("/{tournament_id}/", response_model=Tournament)
+@router.put("/{tournament_id}/", response_model=StandardResponse[Tournament])
 async def update_tournament(tournament_id: str, tournament_update: TournamentUpdate, current_user: UserInDB = Depends(get_current_active_user)):
     """Update tournament details"""
     db = await get_database()
@@ -421,7 +421,10 @@ async def update_tournament(tournament_id: str, tournament_update: TournamentUpd
     
     # Return the updated tournament
     updated_tournament = await db.tournaments.find_one({"_id": ObjectId(tournament_id)})
-    return Tournament(**tournament_helper(updated_tournament))
+    return success_response(
+        data=Tournament(**tournament_helper(updated_tournament)),
+        message="Tournament updated successfully"
+    )
 
 @router.delete("/{tournament_id}/", response_model=StandardResponse[dict])
 async def delete_tournament(tournament_id: str, current_user: UserInDB = Depends(get_current_active_user)):

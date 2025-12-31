@@ -12,6 +12,7 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    command: ["mongod", "--quiet"]
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s

@@ -178,7 +178,7 @@ export default function UserTournaments({
         editForm.completed,
         editForm.start_date || undefined,
         editForm.end_date || undefined,
-        editForm.rounds_per_matchup,
+        undefined, // rounds_per_matchup - not updating via PUT request
         editForm.half_length
       );
 
