@@ -28,10 +28,9 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env
+      - ./.env.prod
     environment:
-      - ENVIRONMENT=development
-      - MONGO_URI_LOCAL=mongodb://mongodb:27017/fifa_rivalry
+      - ENVIRONMENT=production
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-43200}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

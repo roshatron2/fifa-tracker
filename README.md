@@ -38,13 +38,15 @@ This will create a virtual environment and install all dependencies from `pyproj
 
 #### Configure Environment Variables
 
-Create a `.env` file in the `backend` directory:
+Create two environment files (`.env.dev` and `.env.prod`) in the root directory:
 
 ```bash
-cp .env.example .env
+# Copy the example file to create development and production environment files
+cp .env.example .env.dev
+cp .env.example .env.prod
 ```
 
-Edit `.env` and configure the following variables:
+Edit `.env.dev` and `.env.prod` and configure the following variables in each file:
 
 ```env
 # Environment
@@ -52,7 +54,6 @@ ENVIRONMENT=development
 
 # MongoDB
 MONGO_URI=your_mongodb_connection_string
-MONGO_URI_LOCAL=your_mongodb_connection_string
 
 # JWT Secret (generate a secure key)
 SECRET_KEY=your_secret_key_here
@@ -218,8 +219,7 @@ fifa-tracker/
 │   │   └── config.py      # Configuration
 │   ├── scripts/           # Utility scripts
 │   ├── main.py           # FastAPI application
-│   ├── pyproject.toml    # Python dependencies
-│   └── .env              # Environment variables
+│   └── pyproject.toml    # Python dependencies
 ├── frontend/
 │   ├── src/
 │   │   ├── app/          # Next.js app directory
@@ -229,6 +229,9 @@ fifa-tracker/
 │   │   └── types/        # TypeScript types
 │   ├── package.json      # Node dependencies
 │   └── .env.local        # Frontend environment variables
+├── .env.example          # Environment variables template
+├── .env.dev              # Development environment variables
+├── .env.prod             # Production environment variables
 └── docker-compose.local.yml
 ```
 
@@ -295,7 +298,7 @@ If you get "Address already in use" error:
 ### MongoDB Connection Issues
 
 - Ensure your IP is whitelisted in MongoDB Atlas
-- Check your connection string in `.env`
+- Check your connection string in `.env.dev` or `.env.prod` (depending on your environment)
 - Verify network connectivity
 
 ### Frontend API Connection Issues

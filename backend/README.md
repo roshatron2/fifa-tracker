@@ -106,15 +106,18 @@ The API will be available at `http://localhost:8000`
 
 ### Local Development with Docker
 
-For local development, use the local Docker Compose configuration:
+For local development, use the root-level Docker Compose configuration:
 
 ```bash
+# From the project root directory
+cd ..
 docker-compose -f docker-compose.local.yml up --build
 ```
 
 This will start:
-- **MongoDB**: Local MongoDB container (version 7.0) on port 27017
-- **Backend API**: FastAPI application on http://localhost:3000
+- **MongoDB**: Local MongoDB container (version 8.0) on port 27017
+- **Backend API**: FastAPI application on http://localhost:8000
+- **Frontend**: Next.js application on http://localhost:3000
 
 The MongoDB connection string is automatically set to `mongodb://mongodb:27017/fifa_rivalry` for local development.
 

@@ -14,29 +14,29 @@ Use with extreme caution!
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import pathlib
-from dotenv import dotenv_values
+import os
 import sys
 
 # Add the app directory to the Python path
-sys.path.append(str(pathlib.Path(__file__).parent))
+sys.path.append(str(pathlib.Path(__file__).parent.parent))
 
+# Import settings FIRST - this loads from root .env.dev or .env.prod
+from app.config import settings
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 def load_config():
-    """Load configuration from .env file"""
-    env_path = pathlib.Path(__file__).parent.parent / '.env'
-    config = dotenv_values(env_path)
-    
-    # Determine environment from .env file
-    environment = config.get("ENVIRONMENT", "development")
-    
-    # Get MongoDB URI from .env file or use default based on environment
-    mongo_uri = config.get("MONGO_URI") or config.get(f"MONGO_URI_{environment.upper()}")
+    """Load MongoDB URI from settings, converting Docker service name to localhost for local execution"""
+    mongo_uri = settings.MONGO_URI
     
     if not mongo_uri:
-        raise ValueError("MongoDB URI not found in .env file")
+        raise ValueError("MongoDB URI not found in configuration")
+    
+    # This script always runs locally, so use localhost instead of Docker service name
+    if "mongodb://mongodb:" in mongo_uri:
+        # Replace Docker service name with localhost for local execution
+        mongo_uri = mongo_uri.replace("mongodb://mongodb:", "mongodb://localhost:")
     
     return mongo_uri
 

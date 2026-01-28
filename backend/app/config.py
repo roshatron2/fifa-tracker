@@ -3,9 +3,23 @@ from typing import Optional
 from pathlib import Path
 from dotenv import dotenv_values
 
-# Load environment variables from .env file if it exists
-env_path = Path(__file__).parent.parent / '.env'
-config = dotenv_values(env_path) if env_path.exists() else {}
+# Load environment variables from .env file in root directory
+# Check root directory .env.dev or .env.prod (based on ENVIRONMENT)
+backend_dir = Path(__file__).parent.parent
+root_dir = backend_dir.parent
+
+# Check ENVIRONMENT from OS env to determine which root file to check
+env_from_os = os.getenv("ENVIRONMENT", "development")
+
+# Load from root directory only
+root_env_dev = root_dir / '.env.dev'
+root_env_prod = root_dir / '.env.prod'
+
+config = {}
+if env_from_os == "production" and root_env_prod.exists():
+    config = dotenv_values(root_env_prod)
+elif root_env_dev.exists():
+    config = dotenv_values(root_env_dev)
 
 def get_env_var(key: str, default: str = None) -> str:
     """Get environment variable with fallback to .env file"""
@@ -19,10 +33,7 @@ class Settings:
     DEBUG: bool = ENVIRONMENT == "development"
     
     # Database
-    MONGO_URI: str = (
-        get_env_var("MONGO_URI_LOCAL") if ENVIRONMENT == "development" 
-        else get_env_var("MONGO_URI") or get_env_var(f"MONGO_URI_{ENVIRONMENT.upper()}")
-    )
+    MONGO_URI: str = get_env_var("MONGO_URI")
     DATABASE_NAME: str = "fifa_rivalry"
     
     # JWT Authentication
