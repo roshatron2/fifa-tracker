@@ -99,8 +99,8 @@ def setup_logging(
                 "handlers": ["console"],
                 "propagate": False
             },
-            "uvicorn.access": {  # Disable uvicorn access logging
-                "level": "WARNING",
+            "uvicorn.access": {  # HTTP access request logging
+                "level": "INFO",
                 "handlers": ["console"],
                 "propagate": False
             },
