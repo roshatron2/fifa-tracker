@@ -109,7 +109,6 @@ export default function MatchHistory({
           {sortedDates.map(dateKey => {
             const dateMatches = groupedMatches[dateKey];
             const formattedDate = formatDate(dateMatches[0].date);
-            console.log(formattedDate);
 
             return (
               <div key={dateKey} className="space-y-3">
@@ -125,12 +124,16 @@ export default function MatchHistory({
                           ? 'bg-[#1e293b] border border-green-600/40'
                           : 'bg-[#2d3748] border border-red-600/40'
                       } rounded-lg p-3 sm:p-4 ${
-                        onMatchClick
+                        onMatchClick &&
+                        !(isTournamentCompleted && match.completed)
                           ? 'cursor-pointer hover:bg-[#374151] transition-colors'
                           : ''
                       }`}
                       onClick={
-                        onMatchClick ? () => onMatchClick(match) : undefined
+                        onMatchClick &&
+                        !(isTournamentCompleted && match.completed)
+                          ? () => onMatchClick(match)
+                          : undefined
                       }
                     >
                       <div className="space-y-3">

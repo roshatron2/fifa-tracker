@@ -101,11 +101,12 @@ async def get_player_last_5_matches(db, player_id: str, tournament_id: str = Non
             else:
                 results.append("D")  # Draw
         
-        # Reverse results so oldest match is first (leftmost when displayed)
+        # Reverse so [oldest, ..., newest] - leftmost is oldest, rightmost is most recent
+        results.reverse()
         
-        # Pad with '-' at the beginning if less than 5 matches (oldest positions)
+        # Pad with '-' on the right if less than 5 matches (empty slots for future matches)
         while len(results) < 5:
-            results.insert(0, "-")
+            results.append("-")
         
         return results
         
@@ -866,6 +867,13 @@ async def edit_match_in_tournament(
         raise HTTPException(
             status_code=403, 
             detail="You can only edit matches in tournaments that you created"
+        )
+
+    # Block edits when tournament is completed
+    if tournament.get("completed", False):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update match - tournament is already completed"
         )
     
     # Check if match exists and belongs to this tournament

@@ -2,8 +2,10 @@ import { useAuth } from '@/contexts/auth';
 import {
   addPlayerToTournament,
   deleteTournament,
+  endTournament,
   getFriends,
   getPlayers,
+  getTournamentMatches,
   getTournamentPlayers,
   getTournaments,
   removePlayerFromTournament,
@@ -208,6 +210,48 @@ export default function UserTournaments({
 
   const handleCancelEdit = () => {
     setEditingTournament(null);
+  };
+
+  const handleEndTournament = async (tournamentId: string) => {
+    try {
+      const paginatedMatches = await getTournamentMatches(
+        tournamentId,
+        1,
+        1000
+      );
+      const incompleteMatches = paginatedMatches.items.filter(
+        m => !m.completed
+      );
+
+      if (incompleteMatches.length > 0) {
+        showToast(
+          `Cannot end tournament: ${incompleteMatches.length} incomplete match(es) remaining. Please complete all matches first.`,
+          'error'
+        );
+        return;
+      }
+
+      const updatedTournament = await endTournament(tournamentId);
+      if (updatedTournament) {
+        setTournaments(prev =>
+          prev.map(t =>
+            t.id === tournamentId
+              ? { ...t, ...updatedTournament, completed: true }
+              : t
+          )
+        );
+        showToast('Tournament completed successfully!', 'success');
+
+        if (onTournamentCreated) {
+          onTournamentCreated();
+        }
+      }
+    } catch (error) {
+      console.error('Error ending tournament:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to end tournament.';
+      showToast(errorMessage, 'error');
+    }
   };
 
   const handleDeleteTournament = (tournamentId: string) => {
@@ -603,7 +647,17 @@ export default function UserTournaments({
                         </p>
                       </div>
                       {user && tournament.owner_id === user.id && (
-                        <div className="flex gap-2 sm:flex-shrink-0">
+                        <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
+                          {!tournament.completed && (
+                            <button
+                              onClick={() =>
+                                handleEndTournament(tournament.id)
+                              }
+                              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none"
+                            >
+                              End Tournament
+                            </button>
+                          )}
                           <button
                             onClick={() => handleEditClick(tournament)}
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none"

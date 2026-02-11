@@ -242,6 +242,23 @@ export async function getTournamentMatches(
   }
 }
 
+export async function endTournament(
+  tournament_id: string
+): Promise<Tournament | null> {
+  try {
+    const axiosInstance = createAuthenticatedRequest();
+    const response = await axiosInstance.post(
+      `/tournaments/${tournament_id}/end`
+    );
+    // End endpoint returns Tournament directly (not wrapped in StandardResponse)
+    const data = response.data?.data ?? response.data;
+    return data;
+  } catch (error) {
+    debugError('Error ending tournament:', error);
+    throw error;
+  }
+}
+
 export async function getTournamentStandings(
   tournament_id: string
 ): Promise<PlayerStats[]> {
