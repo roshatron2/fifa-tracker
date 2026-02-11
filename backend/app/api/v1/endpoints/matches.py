@@ -145,7 +145,6 @@ async def get_match_by_id(match_id: str, current_user: UserInDB = Depends(get_cu
 @router.put("/{match_id}", response_model=StandardResponse[Match])
 async def update_match(match_id: str, match_update: MatchUpdate, current_user: UserInDB = Depends(get_current_active_user)):
     """Update a match"""
-    print(match_update)
     try:
         db = await get_database()
         match : Match = await db.matches.find_one({"_id": ObjectId(match_id)})
@@ -158,6 +157,15 @@ async def update_match(match_id: str, match_update: MatchUpdate, current_user: U
         # Validate goals are non-negative
         if match_update.player1_goals < 0 or match_update.player2_goals < 0:
             raise HTTPException(status_code=400, detail="Goals cannot be negative")
+
+        # Block updates if match belongs to a completed tournament
+        if match.get("tournament_id"):
+            tournament = await db.tournaments.find_one({"_id": ObjectId(match["tournament_id"])})
+            if tournament and tournament.get("completed", False):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot update match - tournament is already completed"
+                )
         
         player1_goals_diff  = match_update.player1_goals - match["player1_goals"]
         player2_goals_diff = match_update.player2_goals - match["player2_goals"]

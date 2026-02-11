@@ -21,6 +21,7 @@ interface LogMatchProps {
     player2_goals: number;
     half_length: number;
     completed: boolean;
+    tournamentCompleted?: boolean;
   };
 }
 
@@ -109,6 +110,13 @@ export default function LogMatch({
   const handleSubmit = () => {
     // If editing an existing match, update instead of creating
     if (prePopulatedMatch?.id) {
+      if (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted) {
+        showToast(
+          'Cannot update match - tournament is already completed',
+          'error'
+        );
+        return;
+      }
       updateMatch(
         prePopulatedMatch.id,
         formData.player1_goals,
@@ -363,13 +371,24 @@ export default function LogMatch({
 
       <div className="mt-6">
         <button
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors text-sm sm:text-base"
+          className={`w-full font-medium py-3 px-4 rounded-lg transition-colors text-sm sm:text-base ${
+            prePopulatedMatch?.id &&
+            (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted)
+              ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+          }`}
           onClick={handleSubmit}
+          disabled={
+            !!(
+              prePopulatedMatch?.id &&
+              (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted)
+            )
+          }
         >
           {prePopulatedMatch?.id
             ? 'Update Match'
             : !selectedTournament || isTournamentCompleted
-              ? 'Log Independent Match'
+              ? 'Log Non-Tournamen Match'
               : 'Log Match'}
         </button>
       </div>

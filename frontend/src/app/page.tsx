@@ -64,6 +64,7 @@ function HomeContent() {
     player2_goals: number;
     half_length: number;
     completed: boolean;
+    tournamentCompleted?: boolean;
   } | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
@@ -324,6 +325,9 @@ function HomeContent() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const displayTournament =
+    tournaments.find(t => t.id === selectedTournament) ?? tournament;
+
   const handleMatchClick = (match: MatchResult) => {
     // Find the player IDs from the players list
     const player1 = players.find(
@@ -336,6 +340,9 @@ function HomeContent() {
     );
 
     if (player1 && player2) {
+      const selectedTournamentData = tournaments.find(
+        t => t.id === selectedTournament
+      );
       setPrePopulatedMatch({
         id: match.id,
         player1_id: player1.id,
@@ -346,6 +353,7 @@ function HomeContent() {
         player2_goals: match.player2_goals,
         half_length: match.half_length,
         completed: match.completed,
+        tournamentCompleted: selectedTournamentData?.completed ?? false,
       });
 
       // Switch to log-match tab and update URL
@@ -447,22 +455,26 @@ function HomeContent() {
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-400">
-                  {tournament?.start_date
-                    ? formatDate(tournament.start_date)
+                  {displayTournament?.start_date
+                    ? formatDate(displayTournament.start_date)
                     : 'Not set'}{' '}
                   -{' '}
-                  {tournament?.end_date
-                    ? formatDate(tournament.end_date)
+                  {displayTournament?.end_date
+                    ? formatDate(displayTournament.end_date)
                     : 'Not set'}
                 </p>
               </div>
-              {tournament && (
+              {displayTournament && (
                 <span
                   className={`text-white px-3 py-1 rounded-full text-xs sm:text-sm self-start sm:self-auto ${
-                    tournament.completed ? 'bg-green-500' : 'bg-yellow-500'
+                    displayTournament.completed
+                      ? 'bg-green-500'
+                      : 'bg-yellow-500'
                   }`}
                 >
-                  {tournament.completed ? 'Completed' : 'In Progress'}
+                  {displayTournament.completed
+                    ? 'Completed'
+                    : 'In Progress'}
                 </span>
               )}
             </div>

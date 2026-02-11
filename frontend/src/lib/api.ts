@@ -41,6 +41,7 @@ export {
   addPlayerToTournament,
   createTournament,
   deleteTournament,
+  endTournament,
   getTournament,
   getTournamentMatches,
   getTournamentPlayers,
