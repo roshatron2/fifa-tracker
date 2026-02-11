@@ -134,7 +134,7 @@ app.add_middleware(
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all incoming HTTP requests with async logging"""
+    """Log all incoming HTTP requests with async logging and traffic details"""
     start_time = time.time()
     
     # Get origin for CORS checks
@@ -148,6 +148,17 @@ async def log_requests(request: Request, call_next):
     
     # Process the request
     response = await call_next(request)
+    
+    # Traffic log: method, path, status, duration, client IP
+    duration_ms = (time.time() - start_time) * 1000
+    client_ip = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or request.headers.get("x-real-ip")
+        or (request.client.host if request.client else "unknown")
+    )
+    logger.info(
+        f"{request.method} {request.url.path} {response.status_code} {duration_ms:.1f}ms client={client_ip}"
+    )
     
     return response
 
