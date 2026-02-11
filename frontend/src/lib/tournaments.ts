@@ -47,7 +47,7 @@ export async function getTournament(
 ): Promise<Tournament | null> {
   try {
     const axiosInstance = createAuthenticatedRequest();
-    const response = await axiosInstance.get(`/tournaments/${tournament_id}/`);
+    const response = await axiosInstance.get(`/tournaments/${tournament_id}`);
     const { data } = response.data;
     return data;
   } catch (error) {
@@ -80,7 +80,7 @@ export async function updateTournament(
     if (half_length !== undefined) payload.half_length = half_length;
 
     const response = await axiosInstance.put(
-      `/tournaments/${tournament_id}/`,
+      `/tournaments/${tournament_id}`,
       payload
     );
     const { data } = response.data;

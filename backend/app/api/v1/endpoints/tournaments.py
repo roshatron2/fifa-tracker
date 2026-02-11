@@ -342,7 +342,7 @@ async def get_tournament_matches(
         message=f"Retrieved {len(processed_matches)} matches (page {page} of {total_pages})"
     )
 
-@router.get("/{tournament_id}/", response_model=StandardResponse[Tournament])
+@router.get("/{tournament_id}", response_model=StandardResponse[Tournament])
 async def get_tournament(tournament_id: str, current_user: UserInDB = Depends(get_current_active_user)):
     """Get a specific tournament"""
     db = await get_database()
@@ -354,7 +354,7 @@ async def get_tournament(tournament_id: str, current_user: UserInDB = Depends(ge
         message="Tournament retrieved successfully"
     )
 
-@router.put("/{tournament_id}/", response_model=StandardResponse[Tournament])
+@router.put("/{tournament_id}", response_model=StandardResponse[Tournament])
 async def update_tournament(tournament_id: str, tournament_update: TournamentUpdate, current_user: UserInDB = Depends(get_current_active_user)):
     """Update tournament details"""
     db = await get_database()
@@ -432,7 +432,7 @@ async def update_tournament(tournament_id: str, tournament_update: TournamentUpd
         message="Tournament updated successfully"
     )
 
-@router.delete("/{tournament_id}/", response_model=StandardResponse[dict])
+@router.delete("/{tournament_id}", response_model=StandardResponse[dict])
 async def delete_tournament(tournament_id: str, current_user: UserInDB = Depends(get_current_active_user)):
     """Delete a tournament and all its associated matches"""
     db = await get_database()
