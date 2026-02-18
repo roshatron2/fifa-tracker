@@ -54,24 +54,41 @@ export default function ProfileTab({
           </div>
         ) : userStats ? (
           <div className="space-y-6">
-            {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-yellow-400">
-                  {userStats.total_matches || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Matches Played
-                </div>
+            {/* Record Summary */}
+            <div className="text-center">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                {userStats.total_matches || 0} Matches Played
+              </p>
+              <div className="flex items-baseline justify-center gap-1.5 text-2xl sm:text-3xl font-bold">
+                <span className="text-green-400">{userStats.wins || 0}W</span>
+                <span className="text-gray-500">/</span>
+                <span className="text-gray-400">{userStats.draws || 0}D</span>
+                <span className="text-gray-500">/</span>
+                <span className="text-red-400">{userStats.losses || 0}L</span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-green-400">
-                  {userStats.wins || 0}
+              {(userStats.total_matches || 0) > 0 && (
+                <div className="mt-3 flex h-1.5 rounded-full overflow-hidden bg-gray-700/50 max-w-xs mx-auto">
+                  <div
+                    className="bg-green-500 transition-all duration-500"
+                    style={{ width: `${((userStats.wins || 0) / (userStats.total_matches || 1)) * 100}%` }}
+                  />
+                  <div
+                    className="bg-gray-500 transition-all duration-500"
+                    style={{ width: `${((userStats.draws || 0) / (userStats.total_matches || 1)) * 100}%` }}
+                  />
+                  <div
+                    className="bg-red-500 transition-all duration-500"
+                    style={{ width: `${((userStats.losses || 0) / (userStats.total_matches || 1)) * 100}%` }}
+                  />
                 </div>
-                <div className="text-xs md:text-sm text-gray-400">Wins</div>
-              </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center col-span-2 md:col-span-1">
-                <div className="text-xl md:text-2xl font-bold text-blue-400">
+              )}
+            </div>
+
+            {/* Stats List */}
+            <div className="bg-[#2d3748] rounded-lg divide-y divide-gray-700/40">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Win Rate</span>
+                <span className="text-sm font-semibold text-white">
                   {userStats.win_rate !== null &&
                   userStats.win_rate !== undefined
                     ? (userStats.win_rate * 100).toFixed(1)
@@ -81,99 +98,42 @@ export default function ProfileTab({
                             (userStats.total_matches || 1)) *
                           100
                         ).toFixed(1)
-                      : '0.0'}
-                  %
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">Win Rate</div>
+                      : '0.0'}%
+                </span>
               </div>
-            </div>
-
-            {/* Additional Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-red-400">
-                  {userStats.losses || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">Losses</div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Elo Rating</span>
+                <span className="text-sm font-semibold text-white">{userStats.elo_rating || 1200}</span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-gray-400">
-                  {userStats.draws || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">Draws</div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Points</span>
+                <span className="text-sm font-semibold text-white">{userStats.points || 0}</span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-purple-400">
-                  {userStats.points || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">Points</div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Goals Scored</span>
+                <span className="text-sm font-semibold text-green-400">{userStats.total_goals_scored || 0}</span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-orange-400">
-                  {userStats.elo_rating || 1200}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Elo Rating
-                </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Goals Conceded</span>
+                <span className="text-sm font-semibold text-red-400">{userStats.total_goals_conceded || 0}</span>
               </div>
-            </div>
-
-            {/* Goals Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-green-400">
-                  {userStats.total_goals_scored || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Goals Scored
-                </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Goal Difference</span>
+                <span className="text-sm font-semibold text-white">
+                  {(userStats.total_goals_scored || 0) - (userStats.total_goals_conceded || 0)}
+                </span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-red-400">
-                  {userStats.total_goals_conceded || 0}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Goals Conceded
-                </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Avg Goals Scored</span>
+                <span className="text-sm font-semibold text-green-400">{(userStats.average_goals_scored || 0).toFixed(1)}</span>
               </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center col-span-2 md:col-span-1">
-                <div className="text-lg md:text-xl font-bold text-blue-400">
-                  {(userStats.total_goals_scored || 0) -
-                    (userStats.total_goals_conceded || 0)}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Goal Difference
-                </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Avg Goals Conceded</span>
+                <span className="text-sm font-semibold text-red-400">{(userStats.average_goals_conceded || 0).toFixed(1)}</span>
               </div>
-            </div>
-
-            {/* Averages */}
-            <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-4">
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-green-400">
-                  {(userStats.average_goals_scored || 0).toFixed(1)}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Avg Goals Scored
-                </div>
-              </div>
-              <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-                <div className="text-lg md:text-xl font-bold text-red-400">
-                  {(userStats.average_goals_conceded || 0).toFixed(1)}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">
-                  Avg Goals Conceded
-                </div>
-              </div>
-            </div>
-
-            {/* Tournament Stats */}
-            <div className="bg-[#2d3748] rounded-lg p-3 md:p-4 text-center">
-              <div className="text-lg md:text-xl font-bold text-yellow-400">
-                {userStats.tournaments_played || 0}
-              </div>
-              <div className="text-xs md:text-sm text-gray-400">
-                Tournaments Played
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-400">Tournaments Played</span>
+                <span className="text-sm font-semibold text-white">{userStats.tournaments_played || 0}</span>
               </div>
             </div>
 
