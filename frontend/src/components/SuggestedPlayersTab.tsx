@@ -3,13 +3,14 @@
 import { UserIcon, UserPlusIcon } from '@/components/Icons';
 import { NonFriendPlayer } from '@/types';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface SuggestedPlayersTabProps {
   suggestedPlayers: NonFriendPlayer[];
   suggestedPlayersLoading: boolean;
   sentFriendRequests: Set<string>;
-  onRefresh: () => void;
-  onSendFriendRequest: (userId: string) => void;
+  onRefresh: () => void | Promise<void>;
+  onSendFriendRequest: (userId: string) => void | Promise<void>;
 }
 
 export default function SuggestedPlayersTab({
@@ -20,16 +21,48 @@ export default function SuggestedPlayersTab({
   onSendFriendRequest,
 }: SuggestedPlayersTabProps) {
   const router = useRouter();
+  const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleSendRequest = async (userId: string) => {
+    setSendingRequestId(userId);
+    try {
+      await onSendFriendRequest(userId);
+    } finally {
+      setSendingRequestId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Players You Might Know</h3>
         <button
-          onClick={onRefresh}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className={`px-4 py-2 text-white rounded-lg transition-colors text-sm ${
+            isRefreshing
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600'
+          }`}
         >
-          Refresh
+          {isRefreshing ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+              Refreshing...
+            </span>
+          ) : (
+            'Refresh'
+          )}
         </button>
       </div>
 
@@ -95,11 +128,20 @@ export default function SuggestedPlayersTab({
                         </button>
                       ) : (
                         <button
-                          onClick={() => onSendFriendRequest(player.id)}
-                          className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                          onClick={() => handleSendRequest(player.id)}
+                          disabled={sendingRequestId === player.id}
+                          className={`p-2 text-white rounded-lg transition-colors ${
+                            sendingRequestId === player.id
+                              ? 'bg-gray-500 cursor-not-allowed'
+                              : 'bg-green-500 hover:bg-green-600'
+                          }`}
                           title="Add Friend"
                         >
-                          <UserPlusIcon className="w-4 h-4" />
+                          {sendingRequestId === player.id ? (
+                            <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                          ) : (
+                            <UserPlusIcon className="w-4 h-4" />
+                          )}
                         </button>
                       )}
                     </div>
@@ -126,10 +168,22 @@ export default function SuggestedPlayersTab({
               recent matches.
             </p>
             <button
-              onClick={onRefresh}
-              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`px-6 py-2 text-white rounded-lg transition-colors ${
+                isRefreshing
+                  ? 'bg-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              Try Again
+              {isRefreshing ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                  Refreshing...
+                </span>
+              ) : (
+                'Try Again'
+              )}
             </button>
           </div>
         )}

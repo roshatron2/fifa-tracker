@@ -23,6 +23,7 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create');
+  const [isCreating, setIsCreating] = useState(false);
   const [roundsPerMatchup, setRoundsPerMatchup] = useState<number>(2);
   const [halfLength, setHalfLength] = useState<number>(4);
   const [errors, setErrors] = useState<{ roundsPerMatchup?: string; halfLength?: string }>({});
@@ -168,6 +169,7 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
     }
     
     setErrors({});
+    setIsCreating(true);
     
     try {
       // Ensure current user is included in player_ids
@@ -203,6 +205,8 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
       }
     } catch (error) {
       console.error('Error creating tournament:', error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -466,9 +470,21 @@ export default function Settings({ onTournamentCreated }: SettingsProps) {
 
               <button
                 onClick={handleCreateTournament}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                disabled={isCreating}
+                className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
+                  isCreating
+                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
               >
-                Create New Tournament
+                {isCreating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                    Creating...
+                  </span>
+                ) : (
+                  'Create New Tournament'
+                )}
               </button>
             </div>
           </div>

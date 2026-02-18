@@ -54,6 +54,11 @@ export default function UserTournaments({
   >([]);
   const [allPlayers, setAllPlayers] = useState<User[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [endingTournamentId, setEndingTournamentId] = useState<string | null>(null);
+  const [deletingTournamentId, setDeletingTournamentId] = useState<string | null>(null);
+  const [addingPlayerId, setAddingPlayerId] = useState<string | null>(null);
+  const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
@@ -171,6 +176,7 @@ export default function UserTournaments({
   const handleSaveEdit = async () => {
     if (!editingTournament) return;
 
+    setSavingEdit(true);
     try {
       const updatedTournament = await updateTournament(
         editingTournament,
@@ -193,7 +199,6 @@ export default function UserTournaments({
         setEditingTournament(null);
         showToast('Tournament updated successfully!', 'success');
 
-        // Refresh the tournament list in the parent component
         if (onTournamentCreated) {
           onTournamentCreated();
         }
@@ -205,6 +210,8 @@ export default function UserTournaments({
       console.error('Error updating tournament:', error);
       showToast('Failed to update tournament. Please try again.', 'error');
       setEditingTournament(null);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -213,6 +220,7 @@ export default function UserTournaments({
   };
 
   const handleEndTournament = async (tournamentId: string) => {
+    setEndingTournamentId(tournamentId);
     try {
       const paginatedMatches = await getTournamentMatches(
         tournamentId,
@@ -251,6 +259,8 @@ export default function UserTournaments({
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to end tournament.';
       showToast(errorMessage, 'error');
+    } finally {
+      setEndingTournamentId(null);
     }
   };
 
@@ -258,12 +268,12 @@ export default function UserTournaments({
     showConfirmationToast(
       'Are you sure you want to delete this tournament? This action cannot be undone.',
       async () => {
+        setDeletingTournamentId(tournamentId);
         try {
           await deleteTournament(tournamentId);
           setTournaments(prev => prev.filter(t => t.id !== tournamentId));
           showToast('Tournament deleted successfully!', 'success');
 
-          // Refresh the tournament list in the parent component and notify about deletion
           if (onTournamentCreated) {
             onTournamentCreated(undefined, tournamentId);
           }
@@ -274,6 +284,8 @@ export default function UserTournaments({
               ? error.message
               : 'Failed to delete tournament. Please try again.';
           showToast(errorMessage, 'error');
+        } finally {
+          setDeletingTournamentId(null);
         }
       },
       () => {
@@ -286,10 +298,10 @@ export default function UserTournaments({
     tournamentId: string,
     playerId: string
   ) => {
+    setAddingPlayerId(playerId);
     try {
       await addPlayerToTournament(tournamentId, playerId);
 
-      // Update the local state
       setTournaments(prev =>
         prev.map(tournament => {
           if (tournament.id === tournamentId) {
@@ -315,6 +327,8 @@ export default function UserTournaments({
         'Failed to add player to tournament. Please try again.',
         'error'
       );
+    } finally {
+      setAddingPlayerId(null);
     }
   };
 
@@ -322,10 +336,10 @@ export default function UserTournaments({
     tournamentId: string,
     playerId: string
   ) => {
+    setRemovingPlayerId(playerId);
     try {
       await removePlayerFromTournament(tournamentId, playerId);
 
-      // Update the local state
       setTournaments(prev =>
         prev.map(tournament => {
           if (tournament.id === tournamentId) {
@@ -345,6 +359,8 @@ export default function UserTournaments({
         'Failed to remove player from tournament. Please try again.',
         'error'
       );
+    } finally {
+      setRemovingPlayerId(null);
     }
   };
 
@@ -560,10 +576,15 @@ export default function UserTournaments({
                                       player.id
                                     )
                                   }
-                                  className="text-red-400 hover:text-red-300 transition-colors"
+                                  disabled={removingPlayerId === player.id}
+                                  className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
                                   title="Remove player"
                                 >
-                                  ×
+                                  {removingPlayerId === player.id ? (
+                                    <span className="inline-block animate-spin rounded-full h-3 w-3 border-2 border-red-400 border-t-transparent"></span>
+                                  ) : (
+                                    '×'
+                                  )}
                                 </button>
                               </div>
                             ))
@@ -579,6 +600,9 @@ export default function UserTournaments({
                       <div>
                         <label className="block text-sm font-medium mb-2">
                           Add Player
+                          {addingPlayerId && (
+                            <span className="inline-block ml-2 animate-spin rounded-full h-3 w-3 border-2 border-green-500 border-t-transparent align-middle"></span>
+                          )}
                         </label>
                         <div className="flex gap-2">
                           <div className="flex-1">
@@ -591,14 +615,14 @@ export default function UserTournaments({
                               }))}
                               value=""
                               onChange={playerId => {
-                                if (playerId) {
+                                if (playerId && !addingPlayerId) {
                                   handleAddPlayerToTournament(
                                     tournament.id,
                                     playerId
                                   );
                                 }
                               }}
-                              placeholder="Select a player to add"
+                              placeholder={addingPlayerId ? "Adding player..." : "Select a player to add"}
                               searchable={true}
                             />
                           </div>
@@ -615,13 +639,26 @@ export default function UserTournaments({
                     <div className="flex space-x-2">
                       <button
                         onClick={handleSaveEdit}
-                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+                        disabled={savingEdit}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          savingEdit
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                            : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
                       >
-                        Save Changes
+                        {savingEdit ? (
+                          <span className="flex items-center gap-2">
+                            <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                            Saving...
+                          </span>
+                        ) : (
+                          'Save Changes'
+                        )}
                       </button>
                       <button
                         onClick={handleCancelEdit}
-                        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                        disabled={savingEdit}
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -653,9 +690,21 @@ export default function UserTournaments({
                               onClick={() =>
                                 handleEndTournament(tournament.id)
                               }
-                              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none"
+                              disabled={endingTournamentId === tournament.id}
+                              className={`px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none ${
+                                endingTournamentId === tournament.id
+                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                  : 'bg-green-500 hover:bg-green-600 text-white'
+                              }`}
                             >
-                              End Tournament
+                              {endingTournamentId === tournament.id ? (
+                                <span className="flex items-center justify-center gap-2">
+                                  <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                                  Ending...
+                                </span>
+                              ) : (
+                                'End Tournament'
+                              )}
                             </button>
                           )}
                           <button
@@ -668,9 +717,21 @@ export default function UserTournaments({
                             onClick={() =>
                               handleDeleteTournament(tournament.id)
                             }
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none"
+                            disabled={deletingTournamentId === tournament.id}
+                            className={`px-4 py-2 rounded text-sm transition-colors flex-1 sm:flex-none ${
+                              deletingTournamentId === tournament.id
+                                ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                : 'bg-red-500 hover:bg-red-600 text-white'
+                            }`}
                           >
-                            Delete
+                            {deletingTournamentId === tournament.id ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                                Deleting...
+                              </span>
+                            ) : (
+                              'Delete'
+                            )}
                           </button>
                         </div>
                       )}

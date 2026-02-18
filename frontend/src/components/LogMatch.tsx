@@ -34,6 +34,7 @@ export default function LogMatch({
   prePopulatedMatch,
 }: LogMatchProps) {
   const { showToast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedTournament =
     tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
 
@@ -107,84 +108,77 @@ export default function LogMatch({
     }));
   };
 
-  const handleSubmit = () => {
-    // If editing an existing match, update instead of creating
-    if (prePopulatedMatch?.id) {
-      if (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted) {
-        showToast(
-          'Cannot update match - tournament is already completed',
-          'error'
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // If editing an existing match, update instead of creating
+      if (prePopulatedMatch?.id) {
+        if (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted) {
+          showToast(
+            'Cannot update match - tournament is already completed',
+            'error'
+          );
+          return;
+        }
+        await updateMatch(
+          prePopulatedMatch.id,
+          formData.player1_goals,
+          formData.player2_goals,
+          formData.team1,
+          formData.team2,
+          formData.half_length,
+          formData.completed
         );
-        return;
-      }
-      updateMatch(
-        prePopulatedMatch.id,
-        formData.player1_goals,
-        formData.player2_goals,
-        formData.team1,
-        formData.team2,
-        formData.half_length,
-        formData.completed
-      )
-        .then(() => {
-          showToast('Match updated successfully!', 'success');
-          if (onMatchLogged) {
-            onMatchLogged();
-          }
-        })
-        .catch(error => {
-          console.error('Error updating match:', error);
-          const errorMessage =
-            error?.response?.data?.detail ||
-            error?.message ||
-            'Failed to update match. Please try again.';
-          showToast(errorMessage, 'error');
-        });
-      return;
-    }
-
-    // Otherwise, record a new match (automatically marked completed)
-    // If tournament is completed, pass null for tournament_id to create a standalone match
-    const tournamentId = isTournamentCompleted ? null : formData.tournament_id;
-
-    recordMatch(
-      formData.player1_id,
-      formData.player2_id,
-      formData.team1,
-      formData.team2,
-      formData.player1_goals,
-      formData.player2_goals,
-      formData.half_length,
-      formData.completed,
-      tournamentId || undefined
-    )
-      .then(() => {
-        showToast('Match logged successfully!', 'success');
+        showToast('Match updated successfully!', 'success');
         if (onMatchLogged) {
           onMatchLogged();
         }
-      })
-      .catch(error => {
-        console.error('Error logging match:', error);
-        const errorMessage =
-          error?.response?.data?.detail ||
-          error?.message ||
-          'Failed to log match. Please try again.';
-        showToast(errorMessage, 'error');
-      });
+        return;
+      }
 
-    // Reset form data after submission attempt
-    setFormData({
-      player1_id: prePopulatedMatch?.player1_id || '',
-      player2_id: prePopulatedMatch?.player2_id || '',
-      team1: prePopulatedMatch?.team1 || '',
-      team2: prePopulatedMatch?.team2 || '',
-      player1_goals: prePopulatedMatch?.player1_goals || 0,
-      player2_goals: prePopulatedMatch?.player2_goals || 0,
-      tournament_id: selectedTournament?.id || '',
-      half_length: prePopulatedMatch?.half_length || 3,
-      completed: true,
-    } as Match);
+      // Otherwise, record a new match (automatically marked completed)
+      // If tournament is completed, pass null for tournament_id to create a standalone match
+      const tournamentId = isTournamentCompleted ? null : formData.tournament_id;
+
+      await recordMatch(
+        formData.player1_id,
+        formData.player2_id,
+        formData.team1,
+        formData.team2,
+        formData.player1_goals,
+        formData.player2_goals,
+        formData.half_length,
+        formData.completed,
+        tournamentId || undefined
+      );
+      showToast('Match logged successfully!', 'success');
+      if (onMatchLogged) {
+        onMatchLogged();
+      }
+
+      // Reset form data after successful submission
+      setFormData({
+        player1_id: prePopulatedMatch?.player1_id || '',
+        player2_id: prePopulatedMatch?.player2_id || '',
+        team1: prePopulatedMatch?.team1 || '',
+        team2: prePopulatedMatch?.team2 || '',
+        player1_goals: prePopulatedMatch?.player1_goals || 0,
+        player2_goals: prePopulatedMatch?.player2_goals || 0,
+        tournament_id: selectedTournament?.id || '',
+        half_length: prePopulatedMatch?.half_length || 3,
+        completed: true,
+      } as Match);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } }; message?: string };
+      console.error('Error submitting match:', err);
+      const errorMessage =
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to submit match. Please try again.';
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -372,24 +366,33 @@ export default function LogMatch({
       <div className="mt-6">
         <button
           className={`w-full font-medium py-3 px-4 rounded-lg transition-colors text-sm sm:text-base ${
-            prePopulatedMatch?.id &&
-            (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted)
+            isSubmitting ||
+            (prePopulatedMatch?.id &&
+              (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted))
               ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
               : 'bg-blue-500 hover:bg-blue-600 text-white'
           }`}
           onClick={handleSubmit}
           disabled={
+            isSubmitting ||
             !!(
               prePopulatedMatch?.id &&
               (prePopulatedMatch.tournamentCompleted ?? isTournamentCompleted)
             )
           }
         >
-          {prePopulatedMatch?.id
-            ? 'Update Match'
-            : !selectedTournament || isTournamentCompleted
-              ? 'Log Non-Tournamen Match'
-              : 'Log Match'}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+              {prePopulatedMatch?.id ? 'Updating...' : 'Logging...'}
+            </span>
+          ) : prePopulatedMatch?.id ? (
+            'Update Match'
+          ) : !selectedTournament || isTournamentCompleted ? (
+            'Log Non-Tournamen Match'
+          ) : (
+            'Log Match'
+          )}
         </button>
       </div>
     </div>

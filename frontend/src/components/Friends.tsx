@@ -16,6 +16,7 @@ export default function Friends({ friends, isLoadingFriends }: FriendsProps) {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Search users with debounce
@@ -43,9 +44,9 @@ export default function Friends({ friends, isLoadingFriends }: FriendsProps) {
   }, [searchQuery]);
 
   const handleSendFriendRequest = async (userId: string) => {
+    setSendingRequestId(userId);
     try {
       await sendFriendRequest(userId);
-      // Update the search results to reflect the change
       setSearchResults(prev =>
         prev.map(user =>
           user.id === userId ? { ...user, friend_request_sent: true } : user
@@ -54,6 +55,8 @@ export default function Friends({ friends, isLoadingFriends }: FriendsProps) {
     } catch (error) {
       console.error('Error sending friend request:', error);
       setError('Failed to send friend request. Please try again.');
+    } finally {
+      setSendingRequestId(null);
     }
   };
 
@@ -152,9 +155,20 @@ export default function Friends({ friends, isLoadingFriends }: FriendsProps) {
                         ) : (
                           <button
                             onClick={() => handleSendFriendRequest(user.id)}
-                            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors whitespace-nowrap"
+                            disabled={sendingRequestId === user.id}
+                            className={`px-3 py-1.5 text-white text-xs rounded-lg transition-colors whitespace-nowrap ${
+                              sendingRequestId === user.id
+                                ? 'bg-gray-500 cursor-not-allowed'
+                                : 'bg-blue-500 hover:bg-blue-600'
+                            }`}
                           >
-                            Add
+                            {sendingRequestId === user.id ? (
+                              <span className="flex items-center gap-1">
+                                <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                              </span>
+                            ) : (
+                              'Add'
+                            )}
                           </button>
                         )}
                       </div>

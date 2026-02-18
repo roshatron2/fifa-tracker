@@ -2,6 +2,7 @@
 
 import { UserIcon } from '@/components/Icons';
 import { FriendRequestUser } from '@/types';
+import { useState } from 'react';
 
 interface FriendRequestsTabProps {
   friendRequests: {
@@ -9,9 +10,9 @@ interface FriendRequestsTabProps {
     received_requests: FriendRequestUser[];
   };
   friendRequestsLoading: boolean;
-  onRefresh: () => void;
-  onAcceptFriendRequest: (userId: string) => void;
-  onRejectFriendRequest: (userId: string) => void;
+  onRefresh: () => void | Promise<void>;
+  onAcceptFriendRequest: (userId: string) => void | Promise<void>;
+  onRejectFriendRequest: (userId: string) => void | Promise<void>;
 }
 
 export default function FriendRequestsTab({
@@ -21,15 +22,57 @@ export default function FriendRequestsTab({
   onAcceptFriendRequest,
   onRejectFriendRequest,
 }: FriendRequestsTabProps) {
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleAccept = async (userId: string) => {
+    setAcceptingId(userId);
+    try {
+      await onAcceptFriendRequest(userId);
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  const handleReject = async (userId: string) => {
+    setRejectingId(userId);
+    try {
+      await onRejectFriendRequest(userId);
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Friend Requests</h3>
         <button
-          onClick={onRefresh}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className={`px-4 py-2 text-white rounded-lg transition-colors text-sm ${
+            isRefreshing
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600'
+          }`}
         >
-          Refresh
+          {isRefreshing ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+              Refreshing...
+            </span>
+          ) : (
+            'Refresh'
+          )}
         </button>
       </div>
 
@@ -87,19 +130,41 @@ export default function FriendRequestsTab({
                       <div className="flex gap-2">
                         <button
                           onClick={() =>
-                            onAcceptFriendRequest(request.friend_id)
+                            handleAccept(request.friend_id)
                           }
-                          className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm transition-colors"
+                          disabled={acceptingId === request.friend_id || rejectingId === request.friend_id}
+                          className={`px-3 py-1 text-white rounded text-sm transition-colors ${
+                            acceptingId === request.friend_id
+                              ? 'bg-gray-500 cursor-not-allowed'
+                              : 'bg-green-500 hover:bg-green-600'
+                          } disabled:opacity-50`}
                         >
-                          Accept
+                          {acceptingId === request.friend_id ? (
+                            <span className="flex items-center gap-1">
+                              <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                            </span>
+                          ) : (
+                            'Accept'
+                          )}
                         </button>
                         <button
                           onClick={() =>
-                            onRejectFriendRequest(request.friend_id)
+                            handleReject(request.friend_id)
                           }
-                          className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm transition-colors"
+                          disabled={rejectingId === request.friend_id || acceptingId === request.friend_id}
+                          className={`px-3 py-1 text-white rounded text-sm transition-colors ${
+                            rejectingId === request.friend_id
+                              ? 'bg-gray-500 cursor-not-allowed'
+                              : 'bg-red-500 hover:bg-red-600'
+                          } disabled:opacity-50`}
                         >
-                          Reject
+                          {rejectingId === request.friend_id ? (
+                            <span className="flex items-center gap-1">
+                              <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                            </span>
+                          ) : (
+                            'Reject'
+                          )}
                         </button>
                       </div>
                     </div>
@@ -186,10 +251,22 @@ export default function FriendRequestsTab({
               You don&apos;t have any pending friend requests at the moment.
             </p>
             <button
-              onClick={onRefresh}
-              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`px-6 py-2 text-white rounded-lg transition-colors ${
+                isRefreshing
+                  ? 'bg-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              Refresh
+              {isRefreshing ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                  Refreshing...
+                </span>
+              ) : (
+                'Refresh'
+              )}
             </button>
           </div>
         )}
