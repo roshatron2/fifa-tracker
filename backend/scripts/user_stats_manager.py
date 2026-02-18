@@ -12,6 +12,7 @@ Usage:
     python scripts/user_stats_manager.py [OPTIONS]
 
 Options:
+    --env {dev,prod}   Target environment (default: dev)
     --validate-only    Only validate statistics without updating (default behavior)
     --update          Update database with correct statistics
     --dry-run         Show what would be updated without making changes (requires --update)
@@ -20,20 +21,23 @@ Options:
     --help            Show this help message
 
 Examples:
-    # Validate all users (read-only)
+    # Validate all users against dev database (read-only)
     python scripts/user_stats_manager.py --validate-only
+
+    # Validate all users against production database
+    python scripts/user_stats_manager.py --env prod --validate-only
     
-    # Validate specific user
+    # Validate specific user on dev
     python scripts/user_stats_manager.py --validate-only --user-id 507f1f77bcf86cd799439011
     
-    # Dry run - see what would be updated
-    python scripts/user_stats_manager.py --update --dry-run
+    # Dry run against production - see what would be updated
+    python scripts/user_stats_manager.py --env prod --update --dry-run
     
-    # Actually update all users
+    # Actually update all users on dev
     python scripts/user_stats_manager.py --update
     
-    # Update specific user
-    python scripts/user_stats_manager.py --update --user-id 507f1f77bcf86cd799439011
+    # Actually update all users on production (will prompt for confirmation)
+    python scripts/user_stats_manager.py --env prod --update
 
 WARNING: Using --update will modify the database. Make sure you have a backup!
 """
@@ -63,7 +67,13 @@ logger = get_logger(__name__)
 class UserStatsManager:
     """Unified manager for validating and updating user statistics"""
     
-    def __init__(self, update_mode: bool = False, dry_run: bool = False):
+    ENV_URI_MAP = {
+        "dev": "MONGO_URI_DEV",
+        "prod": "MONGO_URI_PRODUCTION",
+    }
+
+    def __init__(self, env: str = "dev", update_mode: bool = False, dry_run: bool = False):
+        self.env = env
         self.db = None
         self.users = {}
         self.matches = []
@@ -74,12 +84,13 @@ class UserStatsManager:
     async def initialize(self):
         """Initialize database connection and load data"""
         try:
-            mongo_uri = get_env_var("MONGO_URI_PRODUCTION")
+            uri_var = self.ENV_URI_MAP[self.env]
+            mongo_uri = get_env_var(uri_var)
             if not mongo_uri:
-                raise ValueError("MONGO_URI_PRODUCTION environment variable is not set")
+                raise ValueError(f"{uri_var} environment variable is not set")
             client = AsyncIOMotorClient(mongo_uri)
             self.db = client[settings.DATABASE_NAME]
-            logger.info("Database connection established using MONGO_URI_PRODUCTION")
+            logger.info(f"Database connection established using {uri_var} ({self.env})")
             
             # Load all users
             await self.load_users()
@@ -294,11 +305,14 @@ class UserStatsManager:
                 "update_data": update_data
             }
         
-        # Perform the actual update
+        # Perform the actual update and purge the detailed stats cache
         try:
             result = await self.db.users.update_one(
                 {"_id": ObjectId(user_id)},
-                {"$set": update_data}
+                {
+                    "$set": update_data,
+                    "$unset": {"detailed_stats_cache": "", "cache_updated_at": ""}
+                }
             )
             
             if result.modified_count > 0:
@@ -360,8 +374,9 @@ class UserStatsManager:
     def print_report(self, process_results: Dict[str, Any], detailed: bool = False, user_id: Optional[str] = None):
         """Print processing report"""
         action = "UPDATE" if self.update_mode else "VALIDATION"
+        env_label = "PRODUCTION" if self.env == "prod" else "DEVELOPMENT"
         print("\n" + "="*60)
-        print(f"USER STATISTICS {action} REPORT")
+        print(f"USER STATISTICS {action} REPORT  [{env_label}]")
         print("="*60)
         
         if self.dry_run:
@@ -467,6 +482,8 @@ class UserStatsManager:
 async def main():
     """Main function"""
     parser = argparse.ArgumentParser(description="Validate and optionally update user statistics")
+    parser.add_argument("--env", choices=["dev", "prod"], default="dev",
+                       help="Target environment (default: dev)")
     parser.add_argument("--validate-only", action="store_true", 
                        help="Only validate statistics without updating (default behavior)")
     parser.add_argument("--update", action="store_true", 
@@ -489,12 +506,19 @@ async def main():
         print("❌ Error: Cannot use both --update and --validate-only flags")
         sys.exit(1)
     
+    # Confirm before mutating production
+    if args.env == "prod" and args.update and not args.dry_run:
+        answer = input("⚠️  You are about to UPDATE the PRODUCTION database. Type 'yes' to confirm: ")
+        if answer.strip().lower() != "yes":
+            print("Aborted.")
+            sys.exit(0)
+    
     # Determine mode
     update_mode = args.update
     dry_run = args.dry_run
     
     try:
-        manager = UserStatsManager(update_mode=update_mode, dry_run=dry_run)
+        manager = UserStatsManager(env=args.env, update_mode=update_mode, dry_run=dry_run)
         await manager.initialize()
         
         if args.user_id:
