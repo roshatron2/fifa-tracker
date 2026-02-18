@@ -51,9 +51,9 @@ import asyncio
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
-from app.config import settings
-from app.api.dependencies import get_database
+from app.config import settings, get_env_var
 from app.utils.logging import get_logger
 from app.utils.elo import calculate_elo_ratings
 
@@ -74,8 +74,12 @@ class UserStatsManager:
     async def initialize(self):
         """Initialize database connection and load data"""
         try:
-            self.db = await get_database()
-            logger.info("Database connection established")
+            mongo_uri = get_env_var("MONGO_URI_PRODUCTION")
+            if not mongo_uri:
+                raise ValueError("MONGO_URI_PRODUCTION environment variable is not set")
+            client = AsyncIOMotorClient(mongo_uri)
+            self.db = client[settings.DATABASE_NAME]
+            logger.info("Database connection established using MONGO_URI_PRODUCTION")
             
             # Load all users
             await self.load_users()
